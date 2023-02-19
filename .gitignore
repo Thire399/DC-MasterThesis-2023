@@ -7,7 +7,7 @@ __pycache__/
 *.so
 
 # Complete data set (only commit the rand. selection)
-Data/**
+Data/Unproccesed/**
 .vscode
 # Unproccesed/**
 # Distribution / packaging

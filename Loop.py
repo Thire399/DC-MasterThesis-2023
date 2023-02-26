@@ -17,7 +17,7 @@ model = M.UNet(enc_chs = (1, 64, 128, 256, 512, 1024)
 dataSet = 'chest_xray'
 patience = 10 # 
 delta = 1e-4
-epochs     = 200
+epochs     = 20
 
 learningRate = 0.2
 optimizer = optim.Adam(model.parameters(), lr = learningRate)
@@ -102,7 +102,6 @@ def TrainLoop(
         val_Loss.append(temp_ValLoss)
 
         early_stopping(temp_ValLoss, model)
-        break
         if early_stopping.early_stop:
             print("Early stopping") 
             break

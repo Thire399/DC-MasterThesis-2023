@@ -10,6 +10,9 @@ __pycache__/
 Data/Unproccesed/**
 Data/Proccesed/chest_xray/train/**
 Data/Proccesed/chest_xray/val/**
+Data/Loss_**
+
+
 
 .vscode
 # Unproccesed/**

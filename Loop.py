@@ -1,12 +1,13 @@
 import numpy as np
 import os
+import time
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.functional as F
 import torch.optim as optim
 import Models as M
-from datetime import datetime
+
 
 os.chdir('/Users/thire/Documents/School/DC-MasterThesis-2023')
 
@@ -50,12 +51,13 @@ def TrainLoop(
     os.makedirs(mkPathLoss , exist_ok = True)
     os.makedirs(mkPathLoss + '/Figs' , exist_ok = True)
     
-    now = str(datetime.now()) #save file as current time stamp - better format to save file?
+    now = time.strftime("%Y%m%d-%H%M%S") #save file as current time stamp - better format to save file?
 
     early_stopping = M.EarlyStopping( patience = patience, 
                             verbose = True,
                             delta   = delta,
-                            path    = mkPathLoss + 'Figs/' + model._get_name() + now )
+                            # path    = mkPathLoss + 'Figs/' + model._get_name() + now 
+                            )
     train_Loss = []
     val_Loss = []
     batchTrain_loss = []
@@ -77,7 +79,7 @@ def TrainLoop(
             loss.backward() 
             optimizer.step()
             batchTrain_loss.append(loss.item())
-            if batch % 20 == 0:
+            if batch % 2 == 0:
                 print('Train Epoch [{}/{}]: [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch+1, epochs, batch * len(data), len(train_Loader.dataset),
                     100. * batch / len(train_Loader),
@@ -91,7 +93,7 @@ def TrainLoop(
             out = model(data.to(device))
             loss = loss_Fun(out, (target).type(torch.LongTensor).to(device))
             batchVal_loss.append(loss.item())
-            if batch % 12 == 0: #For printing
+            if batch % 2 == 0: #For printing
                 print(4*' ', '===> Validation: [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     batch * len(data), len(val_Loader.dataset),
                     100. * batch / len(val_Loader),
@@ -102,6 +104,7 @@ def TrainLoop(
         val_Loss.append(temp_ValLoss)
 
         early_stopping(temp_ValLoss, model)
+        break
         if early_stopping.early_stop:
             print("Early stopping") 
             break

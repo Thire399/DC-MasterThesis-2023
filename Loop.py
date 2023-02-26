@@ -19,9 +19,9 @@ patience = 10 #
 delta = 1e-4
 epochs     = 20
 
-learningRate = 0.2
+learningRate = 1e-6
 optimizer = optim.Adam(model.parameters(), lr = learningRate)
-loss_Fun   = nn.CrossEntropyLoss
+loss_Fun   = nn.CrossEntropyLoss()
 batch_size = 64
 saveModel = True
 ####### PARAMETERS #######

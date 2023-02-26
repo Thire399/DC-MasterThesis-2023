@@ -74,11 +74,8 @@ class UNet(nn.Module):
         out      = self.decoder(enc_ftrs[::-1][0], enc_ftrs[::-1][1:])
         out      = self.head(out)        
         out      = self.sig(out)
-        print(out.size())
         temp = torch.flatten(out,start_dim = 1)       
-        print(temp.size())
         out = F.relu(self.fc1(temp))
-        print(out.size())
         out = self.fc2(out)
 
         return out

@@ -39,7 +39,7 @@ def SaveToTensor(images, h = 32, w = 32):
     imgList = []
     for i in images:    
         img = Image.open(i)
-        newImg = np.array(img.resize((h, w)).convert('L')) #resizes and converts to grayscale
+        newImg = np.array(img.resize((h, w)).convert('L')).astype(np.float32) #resizes and converts to grayscale
         if newImg.shape != (64, 64):
             print(i) #, Image.ANTIALIAS) #'Provides smothing' should not perform this probably.
         imgList.append(torch.unsqueeze(torch.from_numpy(newImg), 0)) # ndarray -> tensor and adding 1 dimension (C x H x W) 
@@ -100,11 +100,11 @@ def DataPrep (class1, class2):
 x, y = DataPrep('Proccesed/chest_xray/train/trainnormal.pt', 'Proccesed/chest_xray/train/trainpneumonia.pt')
 
 torch.save(x, f = 'Proccesed/chest_xray/trainX.pt')
-torch.save(x, f = 'Proccesed/chest_xray/trainY.pt')
+torch.save(y, f = 'Proccesed/chest_xray/trainY.pt')
 
 x, y = DataPrep('Proccesed/chest_xray/val/valnormal.pt', 'Proccesed/chest_xray/val/valpneumonia.pt')
 torch.save(x, f = 'Proccesed/chest_xray/valX.pt')
-torch.save(x, f = 'Proccesed/chest_xray/valY.pt')
+torch.save(y, f = 'Proccesed/chest_xray/valY.pt')
 
 print('Made Train and Val set.')
 

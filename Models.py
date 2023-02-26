@@ -1,4 +1,5 @@
 ''' This file contains the models used for baseline prediction.'''
+import numpy as np
 import torch
 import torchvision
 import torch.nn as nn
@@ -57,26 +58,29 @@ class Decoder(nn.Module):
 #The final UNet implementation
 #was def __init__(self, enc_chs=(3,64,128,256,512,1024), dec_chs=(1024, 512, 256, 128, 64), num_class=1, retain_dim=False, out_sz=(572,572)):
 class UNet(nn.Module):
-    def __init__(self, enc_chs=(3, 8, 16, 32, 64, 128), dec_chs=(128, 64, 32, 16, 8), num_class=1, retain_dim=True): #Change num_class to handle 4 channels
+    def __init__(self, enc_chs=(3, 8, 16, 32, 64, 128), dec_chs=(128, 64, 32, 16, 8), num_class=1): #Change num_class to handle 4 channels
         super().__init__()
         self.encoder     = Encoder(enc_chs)
         self.decoder     = Decoder(dec_chs)
         self.head        = nn.Conv2d(dec_chs[-1], num_class, 1) 
-        self.retain_dim  = retain_dim
         self.sig         = nn.Sigmoid() #clamps the output to between 1 and 0
                 #clamps output between 1 and 0. differently from the sigmoid
+        self.fc1 = nn.Linear(4096, 64)
+        self.fc2 = nn.Linear(64, 2)
         self.num_class   = num_class #think of it as the number of objects to segment
 
     def forward(self, x):
         enc_ftrs = self.encoder(x)
         out      = self.decoder(enc_ftrs[::-1][0], enc_ftrs[::-1][1:])
-        out      = self.head(out)
-        if (self.num_class == 1):
-            out      = self.sig(out)
-        else:
-            out = self.softMax(out)
-        if self.retain_dim: 
-            out = F.interpolate(out, (x.shape[2],x.shape[3]), mode = 'nearest') #nearest #Bicubic should have less artifacts
+        out      = self.head(out)        
+        out      = self.sig(out)
+        print(out.size())
+        temp = torch.flatten(out,start_dim = 1)       
+        print(temp.size())
+        out = F.relu(self.fc1(temp))
+        print(out.size())
+        out = self.fc2(out)
+
         return out
 
 

@@ -102,6 +102,8 @@ if (os.path.isfile('Proccesed/chest_xray/trainX.pt') == False) and (os.path.isfi
     pneumonia = GetFileNames('UnProccesed/chest_xray/train/PNEUMONIA')
     pneumoniaTensor = SaveToTensor(pneumonia, 64, 64)
     torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/train/trainpneumonia.pt')
+
+    #Concat the two types
     x, y = DataPrep('Proccesed/chest_xray/train/trainnormal.pt', 'Proccesed/chest_xray/train/trainpneumonia.pt')
     torch.save(x, f = 'Proccesed/chest_xray/trainX.pt')
     torch.save(y, f = 'Proccesed/chest_xray/trainY.pt')
@@ -124,7 +126,30 @@ else:
 
 print('Made Train and Val set.')
 
-### For testing -dev. 
+
+## making coreset selection based on destribution
+#prep the labels for normal tensor
+y = LabelPrep(0, normalTensor.size()[0])
+normal_Set = torch.utils.data.TensorDataset(normalTensor, y)
+normal_Loader = torch.utils.data.DataLoader(normal_Set,
+                                            batch_size = 1,
+                                            shuffle = False,
+                                            num_workers = 0)
+normalFeatures = CS.featureExtract(normal_Loader)
+
+
+
+#y = LabelPrep(1, pneumoniaTensor.size()[0])
+#pneumonia_Set = torch.utils.data.TensorDataset(normalTensor, y)
+#pneumonia_Loader = torch.utils.data.DataLoader(normal_Set,
+#                                            batch_size = 1,
+#                                            shuffle = False,
+#                                            num_workers = 0)
+#pneumoniaFeatures = CS.featureExtract(normal_Loader)
+
+
+
+### For testing -dev.
 # img = Image.open('UnProccesed/chest_xray/train/PNEUMONIA\person1482_bacteria_3870.jpeg')
 # img.show()
 # print(np.array(img).shape)
@@ -133,6 +158,4 @@ print('Made Train and Val set.')
 # newimg.show()
 # print(np.array(newimg).shape)
 # print(np.array(newimg))
-
-
 

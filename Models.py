@@ -5,7 +5,6 @@ import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 ############ UNet ###################
 class Block(nn.Module):
     def __init__(self, in_ch, out_ch):
@@ -82,6 +81,8 @@ class UNet(nn.Module):
 
 
 ############ ResNet? ###################
+
+
 
 
 ######## Early Stopping ############ 

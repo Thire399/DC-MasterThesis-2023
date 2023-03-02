@@ -37,48 +37,17 @@ def MoveFiles(fileNames, source, destination):
 def SaveToTensor(images, h = 32, w = 32):
     ''' should take in a image and resize it tot h x w (keep layers?). TODO: update description''' 
     imgList = []
+    k = 0
     for i in images:    
+        if k % 50 == 0:
+            print(f'iteration {k}/{len(images)}')
         img = Image.open(i)
         newImg = np.array(img.resize((h, w)).convert('L')).astype(np.float32) #resizes and converts to grayscale
-        if newImg.shape != (64, 64):
-            print(i) #, Image.ANTIALIAS) #'Provides smothing' should not perform this probably.
+        #, Image.ANTIALIAS) #'Provides smothing' should not perform this probably.
         imgList.append(torch.unsqueeze(torch.from_numpy(newImg), 0)) # ndarray -> tensor and adding 1 dimension (C x H x W) 
+        k += 1
     return torch.stack(imgList)
     
-
-############ MAIN ##############
-
-# ----- Train data -----
-normal = GetFileNames('UnProccesed/chest_xray/train/NORMAL')
-normalRandSelection = CS.RandomSelection(normal, k = trainSize)
-normalTensor = SaveToTensor(normalRandSelection, 64, 64)
-os.makedirs('Proccesed/chest_xray/train', exist_ok = True) 
-torch.save(normalTensor, f = 'Proccesed/chest_xray/train/trainnormal.pt')
-print('Saved "normal.pt" to \n"{0}Proccesed/chest_xray/train"\n{1} images saved.'.format(directory, normalTensor.shape[0]))
-
-pneumonia = GetFileNames('UnProccesed/chest_xray/train/PNEUMONIA')
-pneumoniaRandSelection = CS.RandomSelection(pneumonia, k = trainSize)
-pneumoniaTensor = SaveToTensor(pneumoniaRandSelection, 64, 64)
-os.makedirs('Proccesed/chest_xray/train', exist_ok = True) 
-torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/train/trainpneumonia.pt')
-print('Saved "pneumonia.pt" to \n"{0}Proccesed/chest_xray/train"\n{1} images saved.'.format(directory, pneumoniaTensor.shape[0]))
-
-# ---- Validation data ------
-normal = GetFileNames('UnProccesed/chest_xray/val/NORMAL')
-normalRandSelection = CS.RandomSelection(normal, k = valSize)
-normalTensor = SaveToTensor(normalRandSelection, 64, 64)
-os.makedirs('Proccesed/chest_xray/val', exist_ok = True) 
-torch.save(normalTensor, f = 'Proccesed/chest_xray/val/valnormal.pt')
-print('Saved "valnormal.pt" to \n"{0}Proccesed/chest_xray/val"\n{1} images saved.'.format(directory, normalTensor.shape[0]))
-
-pneumonia = GetFileNames('UnProccesed/chest_xray/val/PNEUMONIA')
-pneumoniaRandSelection = CS.RandomSelection(pneumonia, valSize)
-pneumoniaTensor = SaveToTensor(pneumoniaRandSelection, 64, 64)
-os.makedirs('Proccesed/chest_xray/val', exist_ok = True) 
-torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/val/valpneumonia.pt')
-print('Saved "valpneumonia.pt" to \n"{0}Proccesed/chest_xray/val"\n{1} images saved.'.format(directory, pneumoniaTensor.shape[0]))
-
-
 ############## combining the tensors.
 
 def LabelPrep(label, k = 200):
@@ -97,14 +66,61 @@ def DataPrep (class1, class2):
     y = torch.cat((nY, pY))
     return x, y
 
-x, y = DataPrep('Proccesed/chest_xray/train/trainnormal.pt', 'Proccesed/chest_xray/train/trainpneumonia.pt')
 
-torch.save(x, f = 'Proccesed/chest_xray/trainX.pt')
-torch.save(y, f = 'Proccesed/chest_xray/trainY.pt')
+############ MAIN ##############
 
-x, y = DataPrep('Proccesed/chest_xray/val/valnormal.pt', 'Proccesed/chest_xray/val/valpneumonia.pt')
-torch.save(x, f = 'Proccesed/chest_xray/valX.pt')
-torch.save(y, f = 'Proccesed/chest_xray/valY.pt')
+
+
+
+
+# ----- Train data (RANDOM SELECTION) -----
+normal = GetFileNames('UnProccesed/chest_xray/train/NORMAL')
+normalRandSelection = CS.RandomSelection(normal, k = trainSize)
+normalTensor = SaveToTensor(normalRandSelection, 64, 64)
+os.makedirs('Proccesed/chest_xray/train', exist_ok = True) 
+torch.save(normalTensor, f = 'Proccesed/chest_xray/train/Randomtrainnormal.pt')
+
+pneumonia = GetFileNames('UnProccesed/chest_xray/train/PNEUMONIA')
+pneumoniaRandSelection = CS.RandomSelection(pneumonia, k = trainSize)
+pneumoniaTensor = SaveToTensor(pneumoniaRandSelection, 64, 64)
+os.makedirs('Proccesed/chest_xray/train', exist_ok = True) 
+torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/train/Randomtrainpneumonia.pt')
+
+x, y = DataPrep('Proccesed/chest_xray/train/Randomtrainnormal.pt', 'Proccesed/chest_xray/train/Randomtrainpneumonia.pt')
+torch.save(x, f = 'Proccesed/chest_xray/RandomtrainX.pt')
+torch.save(y, f = 'Proccesed/chest_xray/RandomtrainY.pt')
+
+print('Made Random selection dataset')
+if (os.path.isfile('Proccesed/chest_xray/trainX.pt') == False) and (os.path.isfile('Proccesed/chest_xray/trainY.pt') == False):
+    print('preparing training data...')
+    #Train data
+    normal = GetFileNames('UnProccesed/chest_xray/train/NORMAL')
+    normalTensor = SaveToTensor(normal, 64, 64)
+    os.makedirs('Proccesed/chest_xray/train', exist_ok = True) 
+    torch.save(normalTensor, f = 'Proccesed/chest_xray/train/trainnormal.pt')
+
+    pneumonia = GetFileNames('UnProccesed/chest_xray/train/PNEUMONIA')
+    pneumoniaTensor = SaveToTensor(pneumonia, 64, 64)
+    torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/train/trainpneumonia.pt')
+    x, y = DataPrep('Proccesed/chest_xray/train/trainnormal.pt', 'Proccesed/chest_xray/train/trainpneumonia.pt')
+    torch.save(x, f = 'Proccesed/chest_xray/trainX.pt')
+    torch.save(y, f = 'Proccesed/chest_xray/trainY.pt')
+    print('preparing Validation data...')
+    #ValData
+    normal = GetFileNames('UnProccesed/chest_xray/val/NORMAL')
+    normalTensor = SaveToTensor(normal, 64, 64)
+    os.makedirs('Proccesed/chest_xray/val', exist_ok = True) 
+    torch.save(normalTensor, f = 'Proccesed/chest_xray/val/valnormal.pt')
+
+    pneumonia = GetFileNames('UnProccesed/chest_xray/val/PNEUMONIA')
+    pneumoniaTensor = SaveToTensor(pneumonia, 64, 64) 
+    torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/val/valpneumonia.pt')
+    x, y = DataPrep('Proccesed/chest_xray/val/valnormal.pt', 'Proccesed/chest_xray/val/valpneumonia.pt')
+    torch.save(x, f = 'Proccesed/chest_xray/valX.pt')
+    torch.save(y, f = 'Proccesed/chest_xray/valY.pt')
+else:
+    print('Already made val and training data.')
+
 
 print('Made Train and Val set.')
 

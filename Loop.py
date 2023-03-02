@@ -7,14 +7,23 @@ import torch.nn as nn
 import torch.functional as F
 import torch.optim as optim
 import Models as M
+from torchvision import models
 
 
 os.chdir('/Users/thire/Documents/School/DC-MasterThesis-2023')
 
 ####### PARAMETERS #######
-model = M.UNet(enc_chs = (1, 64, 128, 256, 512, 1024)
-               , dec_chs = (1024, 512, 256, 128, 64)
-               , num_class = 1) # binary classification = 1.
+
+#resnet50(weights= ResNet50_Weights.DEFAULT) # DEFAULT is in this case alias for IMAGENET1K_V2
+#resnet50(weights = "IMAGENET1K_V2")
+#resnet50(pretrained = True)
+#resnet50(True)
+model = models.resnet101(pretrained = True)
+model.fc = nn.Linear(in_features=2048, out_features = 2, bias=True)
+
+#model = M.UNet(enc_chs = (1, 64, 128, 256, 512, 1024)
+#               , dec_chs = (1024, 512, 256, 128, 64)
+#               , num_class = 1) # binary classification = 1.
 dataSet = 'chest_xray'
 patience = 10 # 
 delta = 1e-4
@@ -104,7 +113,7 @@ def TrainLoop(
         val_Loss.append(temp_ValLoss)
 
         early_stopping(temp_ValLoss, model)
-        break
+        
         if early_stopping.early_stop:
             print("Early stopping") 
             break
@@ -129,6 +138,9 @@ yTrain = torch.load('Data/Proccesed/'+ dataSet +'/trainY.pt')
 
 xVal = torch.load('Data/Proccesed/'+ dataSet +'/valX.pt')
 yVal = torch.load('Data/Proccesed/'+ dataSet +'/valY.pt')
+
+xTrain = xTrain.repeat(1, 3, 1, 1) # only for pretrained model 
+xVal = xVal.repeat(1, 3, 1, 1)     # only for pretrained model 
 
 train_Set = torch.utils.data.TensorDataset(xTrain, yTrain)
 train_Loader = torch.utils.data.DataLoader(train_Set,

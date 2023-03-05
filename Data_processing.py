@@ -9,7 +9,7 @@ from PIL import Image
 # Change for your own file path. Should only need to change this path. all other paths should be fine as is.!!
 
 # TODO: update function description to standard.
-directory = '/Users/thire/Documents/School/DC-MasterThesis-2023/Data'
+directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'
 os.chdir(directory)
 trainSize = 400
 valSize = 100
@@ -70,27 +70,24 @@ def DataPrep (class1, class2):
 ############ MAIN ##############
 
 
-
-
-
-# ----- Train data (RANDOM SELECTION) -----
-normal = GetFileNames('UnProccesed/chest_xray/train/NORMAL')
-normalRandSelection = CS.RandomSelection(normal, k = trainSize)
-normalTensor = SaveToTensor(normalRandSelection, 64, 64)
-os.makedirs('Proccesed/chest_xray/train', exist_ok = True) 
-torch.save(normalTensor, f = 'Proccesed/chest_xray/train/Randomtrainnormal.pt')
-
-pneumonia = GetFileNames('UnProccesed/chest_xray/train/PNEUMONIA')
-pneumoniaRandSelection = CS.RandomSelection(pneumonia, k = trainSize)
-pneumoniaTensor = SaveToTensor(pneumoniaRandSelection, 64, 64)
-os.makedirs('Proccesed/chest_xray/train', exist_ok = True) 
-torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/train/Randomtrainpneumonia.pt')
-
-x, y = DataPrep('Proccesed/chest_xray/train/Randomtrainnormal.pt', 'Proccesed/chest_xray/train/Randomtrainpneumonia.pt')
-torch.save(x, f = 'Proccesed/chest_xray/RandomtrainX.pt')
-torch.save(y, f = 'Proccesed/chest_xray/RandomtrainY.pt')
-
-print('Made Random selection dataset')
+## ----- Train data (RANDOM SELECTION) -----
+#normal = GetFileNames('UnProccesed/chest_xray/train/NORMAL')
+#normalRandSelection = CS.RandomSelection(normal, k = trainSize)
+#normalTensor = SaveToTensor(normalRandSelection, 64, 64)
+#os.makedirs('Proccesed/chest_xray/train', exist_ok = True) 
+#torch.save(normalTensor, f = 'Proccesed/chest_xray/train/Randomtrainnormal.pt')
+#
+#pneumonia = GetFileNames('UnProccesed/chest_xray/train/PNEUMONIA')
+#pneumoniaRandSelection = CS.RandomSelection(pneumonia, k = trainSize)
+#pneumoniaTensor = SaveToTensor(pneumoniaRandSelection, 64, 64)
+#os.makedirs('Proccesed/chest_xray/train', exist_ok = True) 
+#torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/train/Randomtrainpneumonia.pt')
+#
+#x, y = DataPrep('Proccesed/chest_xray/train/Randomtrainnormal.pt', 'Proccesed/chest_xray/train/Randomtrainpneumonia.pt')
+#torch.save(x, f = 'Proccesed/chest_xray/RandomtrainX.pt')
+#torch.save(y, f = 'Proccesed/chest_xray/RandomtrainY.pt')
+#
+#print('Made Random selection dataset')
 if (os.path.isfile('Proccesed/chest_xray/trainX.pt') == False) and (os.path.isfile('Proccesed/chest_xray/trainY.pt') == False):
     print('preparing training data...')
     #Train data
@@ -129,14 +126,17 @@ print('Made Train and Val set.')
 
 ## making coreset selection based on destribution
 #prep the labels for normal tensor
+normalTensor = torch.load(f = 'Proccesed/chest_xray/train/trainnormal.pt')
 y = LabelPrep(0, normalTensor.size()[0])
+normalTensor = normalTensor.repeat(1,3,1,1) #recreates the tensor to (n, 3, 64, 64)
 normal_Set = torch.utils.data.TensorDataset(normalTensor, y)
 normal_Loader = torch.utils.data.DataLoader(normal_Set,
                                             batch_size = 1,
                                             shuffle = False,
                                             num_workers = 0)
 normalFeatures = CS.featureExtract(normal_Loader)
-
+test = CS.getKNearest(normalFeatures, normalTensor, 200)
+print(test.shape)
 
 
 

@@ -8,6 +8,7 @@ __pycache__/
 
 # Complete data set (only commit the rand. selection)
 Data/Unproccesed/**
+Data/UnProccesed/**
 Data/Proccesed/chest_xray/train/**
 Data/Proccesed/chest_xray/val/**
 Data/Loss_**

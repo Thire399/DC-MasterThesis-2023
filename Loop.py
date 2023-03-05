@@ -10,7 +10,7 @@ import Models as M
 from torchvision import models
 from carbontracker.tracker import CarbonTracker
 
-os.chdir('/home/thire399/Documents/DC-MasterThesis-2023')
+os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
 
 ####### PARAMETERS #######
 
@@ -51,9 +51,9 @@ def TrainLoop(
     #### -- Set up -- ####
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print('Using: ', device)
-    # if device == 'cpu':
-        # print('Not gonna run on the CPU')
-        # return None, None, None
+    if device == 'cpu':
+         print('Not gonna run on the CPU')
+         return None
 
 
     mkPathLoss = 'Data/Loss_' + dataSet

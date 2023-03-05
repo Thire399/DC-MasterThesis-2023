@@ -45,7 +45,7 @@ def CalDistance(x, Data):
     distances = np.sqrt(distancesSqr) #elementwise square root.
     return distances
 
-def Knn (D, k, x, Label):
+def Knn (D, k, x):
     '''
     Parameters: Dataset (D) \n
     Parameters: Number of nearst neighbors (k) \n
@@ -57,12 +57,18 @@ def Knn (D, k, x, Label):
     #sorts the distances and returns the index of the distances.
     SortDistIndex = np.argsort(Dist)
     KIndex = SortDistIndex[:k]
+    out = 
+    return KIndex
 
-    return []
-
-def getKNearest(dataset, k = 200):
-    kmeans = kmeans = KMeans(n_clusters = 1, random_state=0, init="k-means++").fit(dataset)
+def getKNearest(features, dataset, k = 200):
+    '''Dataset = image tensor
+        Features = extracted features
+        # TODO rewrite documentation
+    '''
+    kmeans = kmeans = KMeans(n_clusters = 1, random_state=0, init="k-means++").fit(features)
     center = kmeans.cluster_centers_
+    temp = Knn(center, k = k, x = dataset)
+    
 
 #    for i in range()
     return None

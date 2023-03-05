@@ -139,6 +139,7 @@ normalFeatures = CS.featureExtract(normal_Loader)
 
 
 
+
 #y = LabelPrep(1, pneumoniaTensor.size()[0])
 #pneumonia_Set = torch.utils.data.TensorDataset(normalTensor, y)
 #pneumonia_Loader = torch.utils.data.DataLoader(normal_Set,

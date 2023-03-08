@@ -9,6 +9,7 @@ import torch.optim as optim
 import Models as M
 from torchvision import models
 from carbontracker.tracker import CarbonTracker
+from sklearn.model_selection import GridSearchCV
 
 os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
 
@@ -27,9 +28,9 @@ model = M.UNet(enc_chs = (3, 64, 128, 256, 512, 1024)
 dataSet = 'chest_xray'
 patience = 10 #
 delta = 1e-4
-epochs     = 20
+epochs     = 50
 
-learningRate = 1e-6
+learningRate = 1e-8
 optimizer = optim.Adam(model.parameters(), lr = learningRate)
 loss_Fun   = nn.CrossEntropyLoss()
 batch_size = 64
@@ -47,7 +48,7 @@ def TrainLoop(
             , loss_Fun  = loss_Fun
             , modelSave = saveModel
             ):
-    tracker = CarbonTracker(epochs=epochs)
+    #tracker = CarbonTracker(epochs=epochs)
     #### -- Set up -- ####
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print('Using: ', device)
@@ -76,7 +77,7 @@ def TrainLoop(
     #### -- Main loop -- ####
     model.to(device)
     for epoch in range(epochs):
-        tracker.epoch_start()
+        #tracker.epoch_start()
         batchTrain_loss = []
         batchVal_loss = []
 
@@ -109,7 +110,7 @@ def TrainLoop(
                     100. * batch / len(val_Loader),
                     np.mean(batchVal_loss)))
 
-        tracker.epoch_end()
+        #tracker.epoch_end()
         temp_ValLoss = np.mean(batchVal_loss)
         val_Loss.append(temp_ValLoss)
 
@@ -121,8 +122,8 @@ def TrainLoop(
             break
         else:
             continue
-    if not early_stopping.early_stop:
-        tracker.stop()
+    #if not early_stopping.early_stop:
+        #tracker.stop()
     #### -- Save info -- ####
     if modelSave == True:
 
@@ -130,7 +131,7 @@ def TrainLoop(
         v_Loss = torch.tensor(val_Loss)
 
         torch.save(t_Loss, f = mkPathLoss + '/train_loss'+ model._get_name()  + now + '.pt') # add name
-        torch.save(t_Loss, f = mkPathLoss + '/val_loss'  + model._get_name() + now + '.pt')   # add name
+        torch.save(v_Loss, f = mkPathLoss + '/val_loss'  + model._get_name() + now + '.pt')   # add name
         torch.save(model.state_dict(), mkPathLoss + '/model'+ model._get_name() + now + '.pt' ) # saves model.
     return None
 
@@ -148,7 +149,7 @@ xVal = xVal.repeat(1, 3, 1, 1)     # only for pretrained model
 train_Set = torch.utils.data.TensorDataset(xTrain, yTrain)
 train_Loader = torch.utils.data.DataLoader(train_Set,#
                                             batch_size = batch_size,
-                                            shuffle = False,
+                                            shuffle = True,
                                             num_workers = 0)
 
 val_Set = torch.utils.data.TensorDataset(xVal, yVal)
@@ -156,13 +157,23 @@ val_Loader = torch.utils.data.DataLoader(val_Set,
                                             batch_size = batch_size,
                                             shuffle = True,
                                             num_workers = 0)
-TrainLoop(train_Loader = train_Loader
-          , val_Loader = val_Loader
-          , model    = model
-          , patience = patience
-          , delta    = 1e-4
-          , epochs = epochs
-          , optimizer = optimizer
-          , loss_Fun = loss_Fun
-          , modelSave = saveModel
-          )
+
+#param_grid = {
+#    'batch_size': [16, 64],
+#    'max_epochs': [10, 20]
+#}
+#grid = GridSearchCV(estimator=model, param_grid=param_grid, n_jobs=-1, cv=3)
+#grid_result = grid.fit(xTrain, yTrain)
+#
+#print(grid_result)
+
+#TrainLoop(train_Loader = train_Loader
+#        , val_Loader = val_Loader
+#        , model    = model
+#        , patience = patience
+#        , delta    = 1e-4
+#        , epochs = epochs
+#        , optimizer = optimizer
+#        , loss_Fun = loss_Fun
+#        , modelSave = saveModel
+#        )

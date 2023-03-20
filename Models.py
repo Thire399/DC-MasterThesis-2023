@@ -60,14 +60,14 @@ class Decoder(nn.Module):
 #The final UNet implementation
 #was def __init__(self, enc_chs=(3,64,128,256,512,1024), dec_chs=(1024, 512, 256, 128, 64), num_class=1, retain_dim=False, out_sz=(572,572)):
 class UNet(nn.Module):
-    def __init__(self, enc_chs=(3, 8, 16, 32, 64, 128), dec_chs=(128, 64, 32, 16, 8), num_class=1): #Change num_class to handle 4 channels
+    def __init__(self, enc_chs=(3, 8, 16, 32, 64, 128), dec_chs=(128, 64, 32, 16, 8), num_class=1, df = 4095): #Change num_class to handle 4 channels
         super().__init__()
         self.encoder     = Encoder(enc_chs)
         self.decoder     = Decoder(dec_chs)
         self.head        = nn.Conv2d(dec_chs[-1], num_class, 1) 
         self.sig         = nn.Sigmoid() #clamps the output to between 1 and 0
                 #clamps output between 1 and 0. differently from the sigmoid
-        self.fc1 = nn.Linear(16384, 64)
+        self.fc1 = nn.Linear(df, 64)
         self.fc2 = nn.Linear(64, 2)
         self.num_class   = num_class #think of it as the number of objects to segment
 
@@ -92,6 +92,7 @@ class resnet(nn.Module):
         self.output_layer = output_layer
         self.layers = list(self.pretrained._modules.keys())
         self.layer_count = 0
+        self.conv = nn.Conv2d(1, 3, kernel_size= 1, stride = 1) # Kernel size 1 and stride 1 to change dimensionality.
         for l in self.layers:
             if l != self.output_layer:
                 self.layer_count += 1
@@ -104,6 +105,7 @@ class resnet(nn.Module):
         self.pretrained = None
 
     def forward(self,x):
+        x = self.conv(x)
         x = self.net(x)
         return x
 
@@ -117,7 +119,7 @@ class resnet(nn.Module):
 #https://github.com/Bjarten/early-stopping-pytorch/blob/master/MNIST_Early_Stopping_example.ipynb
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
-    def __init__(self, patience=7, verbose=False, delta=0, path='checkpoint.pt', trace_func=print):
+    def __init__(self, patience=7, verbose=False, delta=0, path='checkpoint.pt', trace_func=print, saveModel = True):
         """
         Args:
             patience (int): How long to wait after last time validation loss improved.
@@ -140,6 +142,7 @@ class EarlyStopping:
         self.delta = delta
         self.path = path
         self.trace_func = trace_func
+        self.saveModel = saveModel
     def __call__(self, val_loss, model):
 
         score = -val_loss
@@ -161,5 +164,6 @@ class EarlyStopping:
         '''Saves model when validation loss decrease.'''
         if self.verbose:
             self.trace_func(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
-        #torch.save(model.state_dict(), self.path) #Custome save made.
+        if self.saveModel:
+            torch.save(model.state_dict(), self.path) #Custome save made.
         self.val_loss_min = val_loss

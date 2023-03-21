@@ -12,18 +12,18 @@ from sklearn.model_selection import train_test_split
 # Change for your own file path. Should only need to change this path. all other paths should be fine as is.!!
 
 # TODO: update function description to standard.
-directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'
+directory = '/home/thire399/Documents/DC-MasterThesis-2023/Data'
 os.chdir(directory)
 trainSize = 400
 valSize = 100
 imgSize = (64, 64)
-vira = False
+vira = True
 
 
 #Dataset to create
-createANew = True
+createANew = False
 generateRandom = False
-generateDistriution = False
+generateDistriution = True
 
 
 #function to get all file names in the folder.
@@ -50,25 +50,25 @@ def MoveFiles(fileNames, source, destination):
     return None
 
 def SaveToTensor(images, h = 32, w = 32):
-    ''' should take in a image and resize it tot h x w (keep layers?). TODO: update description''' 
+    ''' should take in a image and resize it tot h x w (keep layers?). TODO: update description'''
     imgList = []
     k = 0
-    for i in images:    
+    for i in images:
         if k % 50 == 0:
             print(f'iteration {k}/{len(images)}')
         img = Image.open(i)
         newImg = np.array(img.resize((h, w)).convert('L')).astype(np.float32) #resizes and converts to grayscale
         #, Image.ANTIALIAS) #'Provides smothing' should not perform this probably.
-        imgList.append(torch.unsqueeze(torch.from_numpy(newImg), 0)) # ndarray -> tensor and adding 1 dimension (C x H x W) 
+        imgList.append(torch.unsqueeze(torch.from_numpy(newImg), 0)) # ndarray -> tensor and adding 1 dimension (C x H x W)
         k += 1
     return torch.stack(imgList)
-    
+
 ############## combining the tensors.
 
 def LabelPrep(label, k = 200):
     tempL = np.asarray([label]*k)
     return torch.tensor(tempL)
-    
+
 
 def DataPrep (class1, class2):
     ''' Should take in both classes of train and concat them'''
@@ -120,7 +120,7 @@ if generateRandom == True:
     torch.save(normalTensor, f = 'Proccesed/chest_xray/val/valnormal.pt')
 
     pneumonia = GetFileNames('UnProccesed/chest_xray/val/PNEUMONIA')
-    pneumoniaTensor = SaveToTensor(pneumonia, imgSize[0], imgSize[1]) 
+    pneumoniaTensor = SaveToTensor(pneumonia, imgSize[0], imgSize[1])
     torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/val/valpneumonia.pt')
     x, y = DataPrep('Proccesed/chest_xray/val/valnormal.pt', 'Proccesed/chest_xray/val/valpneumonia.pt')
     torch.save(x, f = 'Proccesed/chest_xray/valX.pt')
@@ -134,7 +134,7 @@ if ((os.path.isfile('Proccesed/chest_xray/trainX.pt') == False) and (os.path.isf
     #Train data
     normal = GetFileNames('UnProccesed/chest_xray/train/NORMAL')
     normalTensor = SaveToTensor(normal, imgSize[0], imgSize[1])
-    os.makedirs('Proccesed/chest_xray/train', exist_ok = True) 
+    os.makedirs('Proccesed/chest_xray/train', exist_ok = True)
     torch.save(normalTensor, f = 'Proccesed/chest_xray/train/trainnormal.pt')
 
     pneumonia = GetFileNames('UnProccesed/chest_xray/train/PNEUMONIA', isVira= vira)
@@ -161,7 +161,7 @@ if ((os.path.isfile('Proccesed/chest_xray/trainX.pt') == False) and (os.path.isf
     #ValData
     normal = GetFileNames('UnProccesed/chest_xray/val/NORMAL')
     normalTensor = SaveToTensor(normal, imgSize[0], imgSize[1])
-    os.makedirs('Proccesed/chest_xray/val', exist_ok = True) 
+    os.makedirs('Proccesed/chest_xray/val', exist_ok = True)
     torch.save(normalTensor, f = 'Proccesed/chest_xray/val/valnormal.pt')
 
     pneumonia = GetFileNames('UnProccesed/chest_xray/val/PNEUMONIA')
@@ -181,43 +181,32 @@ if generateDistriution == True:
     #prep the labels for normal tensor
     print('Non-sick images...')
     normal = GetFileNames('UnProccesed/chest_xray/train/NORMAL')
-    kmeansNormalTensor = SaveToTensor(normal, h = 800, w = 800) 
-    normalTensor = SaveToTensor(normal, imgSize[0], imgSize[1])
-    y = LabelPrep(0, normalTensor.size()[0])
+    kmeansNormalTensor = SaveToTensor(normal, h = 800, w = 800)
     #kmeansNormalTensor = kmenasNormalTensor.repeat(1,3,1,1) #recreates the tensor to (n, 3, 64, 64)
-    print('Creating Torch Dataset...')
-    normal_Set = torch.utils.data.TensorDataset(kmeansNormalTensor, y)
-    normal_Loader = torch.utils.data.DataLoader(normal_Set,
-                                                batch_size = 1,
-                                                shuffle = False,
-                                                num_workers = 0)
-    normalFeatures = CS.featureExtract(normal_Loader)
-    normalDistribution = CS.getKNearest(normalFeatures, normalTensor, 400)
+    normalFeatures = CS.featureExtract(kmeansNormalTensor)
+    normalDistribution = CS.getKNearest(normalFeatures, normal, 400)
     del kmeansNormalTensor
-    del normalTensor
-    del normal_Loader
-    del normal_Set
     del normalFeatures
     gc.collect()
+    normalTensor = SaveToTensor(normalDistribution, imgSize[0], imgSize[1])
     torch.save(normalDistribution, f = 'Proccesed/chest_xray/train/normalDistribution.pt')
+    del normalTensor
     del normalDistribution
     gc.collect()
-    
+
     ## making coreset selection based on destribution
-    #prep the labels for pneumonia tensor 
+    #prep the labels for pneumonia tensor
     print('Sick images...')
     pneumonia = GetFileNames('UnProccesed/chest_xray/train/PNEUMONIA', isVira = vira)
     kmeansPneumoniaTensor = SaveToTensor(pneumonia, h = 800, w = 800)
     pneumoniaFeatures = CS.featureExtract(kmeansPneumoniaTensor)
-    #del pneumonia_Loader
-    #del pneumonia_Set
-    #gc.collect()
     del kmeansPneumoniaTensor
     gc.collect()
     pneumoniaDistribution = CS.getKNearest(pneumoniaFeatures, pneumonia, 400)
     pneumoniaTensor = SaveToTensor(pneumoniaDistribution, imgSize[0], imgSize[1])
     torch.save(pneumoniaTensor , f = 'Proccesed/chest_xray/train/pneumoniaDistribution.pt')
-
+    del pneumoniaTensor
+    gc.collect()
     print('Saving tensor...')
 
     x, y = DataPrep('Proccesed/chest_xray/train/normalDistribution.pt', 'Proccesed/chest_xray/train/pneumoniaDistribution.pt')
@@ -228,11 +217,11 @@ if generateDistriution == True:
     print('\nRegenerating validation data...')
     normal = GetFileNames('UnProccesed/chest_xray/val/NORMAL')
     normalTensor = SaveToTensor(normal, imgSize[0], imgSize[1])
-    os.makedirs('Proccesed/chest_xray/val', exist_ok = True) 
+    os.makedirs('Proccesed/chest_xray/val', exist_ok = True)
     torch.save(normalTensor, f = 'Proccesed/chest_xray/val/valnormal.pt')
 
     pneumonia = GetFileNames('UnProccesed/chest_xray/val/PNEUMONIA')
-    pneumoniaTensor = SaveToTensor(pneumonia, imgSize[0], imgSize[1]) 
+    pneumoniaTensor = SaveToTensor(pneumonia, imgSize[0], imgSize[1])
     torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/val/valpneumonia.pt')
     x, y = DataPrep('Proccesed/chest_xray/val/valnormal.pt', 'Proccesed/chest_xray/val/valpneumonia.pt')
     torch.save(x, f = 'Proccesed/chest_xray/valX.pt')

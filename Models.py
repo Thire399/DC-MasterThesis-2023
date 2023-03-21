@@ -17,9 +17,9 @@ class Block(nn.Module):
         self.conv2 = nn.Conv2d(out_ch, out_ch, 3, padding= 1)
         self.BN    = nn.BatchNorm2d(out_ch, affine=False)
         self.Drop  = nn.Dropout(0.20)
-    
+
     def forward(self, x):
-        return self.relu(self.conv2( self.relu( self.conv1(x)))) 
+        return self.relu(self.conv2( self.relu( self.conv1(x))))
 
 #This is the downsampling step/ the encoding step.
 class Encoder(nn.Module):
@@ -27,7 +27,7 @@ class Encoder(nn.Module):
         super().__init__()
         self.enc_blocks = nn.ModuleList([Block(chs[i], chs[i+1]) for i in range(len(chs)-1)])
         self.pool       = nn.MaxPool2d(2)
-    
+
     def forward(self, x):
         ftrs = []
         for block in self.enc_blocks:
@@ -42,8 +42,8 @@ class Decoder(nn.Module):
         super().__init__()
         self.chs         = chs
         self.upconvs    = nn.ModuleList([nn.ConvTranspose2d(chs[i], chs[i+1], 2, 2, padding=0) for i in range(len(chs)-1)]) #maybe use torch unpool "max unpool 2D" 
-        self.dec_blocks = nn.ModuleList([Block(chs[i], chs[i+1]) for i in range(len(chs)-1)]) 
-        
+        self.dec_blocks = nn.ModuleList([Block(chs[i], chs[i+1]) for i in range(len(chs)-1)])
+
     def forward(self, x, encoder_features):
         for i in range(len(self.chs)-1):
             x        = self.upconvs[i](x)
@@ -51,7 +51,7 @@ class Decoder(nn.Module):
             x        = torch.cat([x, enc_ftrs], dim=1)
             x        = self.dec_blocks[i](x)
         return x
-    
+
     def crop(self, enc_ftrs, x):
         _, _, H, W = x.shape
         enc_ftrs   = torchvision.transforms.CenterCrop([H, W])(enc_ftrs)
@@ -64,7 +64,7 @@ class UNet(nn.Module):
         super().__init__()
         self.encoder     = Encoder(enc_chs)
         self.decoder     = Decoder(dec_chs)
-        self.head        = nn.Conv2d(dec_chs[-1], num_class, 1) 
+        self.head        = nn.Conv2d(dec_chs[-1], num_class, 1)
         self.sig         = nn.Sigmoid() #clamps the output to between 1 and 0
                 #clamps output between 1 and 0. differently from the sigmoid
         self.fc1 = nn.Linear(df, 64)
@@ -74,9 +74,9 @@ class UNet(nn.Module):
     def forward(self, x):
         enc_ftrs = self.encoder(x)
         out      = self.decoder(enc_ftrs[::-1][0], enc_ftrs[::-1][1:])
-        out      = self.head(out)        
+        out      = self.head(out)
         out      = self.sig(out)
-        temp = torch.flatten(out,start_dim = 1)       
+        temp = torch.flatten(out,start_dim = 1)
         out = F.relu(self.fc1(temp))
         out = self.fc2(out)
 
@@ -113,9 +113,9 @@ class resnet(nn.Module):
 
 
 
-######## Early Stopping ############ 
+######## Early Stopping ############
 #The early stopping class is from here this github, and the credit goes to him.
-# I only use it for early stopping. 
+# I only use it for early stopping.
 #https://github.com/Bjarten/early-stopping-pytorch/blob/master/MNIST_Early_Stopping_example.ipynb
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
@@ -124,14 +124,14 @@ class EarlyStopping:
         Args:
             patience (int): How long to wait after last time validation loss improved.
                             Default: 7
-            verbose (bool): If True, prints a message for each validation loss improvement. 
+            verbose (bool): If True, prints a message for each validation loss improvement.
                             Default: False
             delta (float): Minimum change in the monitored quantity to qualify as an improvement.
                             Default: 0
             path (str): Path for the checkpoint to be saved to.
                             Default: 'checkpoint.pt'
             trace_func (function): trace print function.
-                            Default: print            
+                            Default: print
         """
         self.patience = patience
         self.verbose = verbose

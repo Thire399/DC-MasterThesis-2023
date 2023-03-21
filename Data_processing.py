@@ -12,12 +12,12 @@ from sklearn.model_selection import train_test_split
 # Change for your own file path. Should only need to change this path. all other paths should be fine as is.!!
 
 # TODO: update function description to standard.
-directory = '/home/thire399/Documents/DC-MasterThesis-2023/Data'
+directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'
 os.chdir(directory)
 trainSize = 400
 valSize = 100
 imgSize = (64, 64)
-vira = True
+vira = False
 
 
 #Dataset to create
@@ -184,12 +184,12 @@ if generateDistriution == True:
     kmeansNormalTensor = SaveToTensor(normal, h = 800, w = 800)
     #kmeansNormalTensor = kmenasNormalTensor.repeat(1,3,1,1) #recreates the tensor to (n, 3, 64, 64)
     normalFeatures = CS.featureExtract(kmeansNormalTensor)
-    normalDistribution = CS.getKNearest(normalFeatures, normal, 400)
+    normalDistribution = CS.getKNearest(normalFeatures, normal, 600)
     del kmeansNormalTensor
     del normalFeatures
     gc.collect()
     normalTensor = SaveToTensor(normalDistribution, imgSize[0], imgSize[1])
-    torch.save(normalDistribution, f = 'Proccesed/chest_xray/train/normalDistribution.pt')
+    torch.save(normalTensor, f = 'Proccesed/chest_xray/train/normalDistribution.pt')
     del normalTensor
     del normalDistribution
     gc.collect()
@@ -202,7 +202,7 @@ if generateDistriution == True:
     pneumoniaFeatures = CS.featureExtract(kmeansPneumoniaTensor)
     del kmeansPneumoniaTensor
     gc.collect()
-    pneumoniaDistribution = CS.getKNearest(pneumoniaFeatures, pneumonia, 400)
+    pneumoniaDistribution = CS.getKNearest(pneumoniaFeatures, pneumonia, 600)
     pneumoniaTensor = SaveToTensor(pneumoniaDistribution, imgSize[0], imgSize[1])
     torch.save(pneumoniaTensor , f = 'Proccesed/chest_xray/train/pneumoniaDistribution.pt')
     del pneumoniaTensor

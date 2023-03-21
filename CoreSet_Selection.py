@@ -51,14 +51,18 @@ def getKNearest(features, dataset, k = 200, chunk = 50):
     #TODO:Given by Julian.
     print('Calculating similarity...')
     temp = []
-    for i in range(len(features)):
+    for i in range(0, len(features), chunk):
         temp_features = features[i:i+chunk]
         sim = F.cosine_similarity(temp_features, center.view(1, -1), dim=1)
-        j = torch.argsort(sim)
-        temp.append(j[:10])
-        i = i + chunk
-    out = [dataset[i] for i in temp[:k]]
-    out = torch.stack(out)
+        #print('iteration: {0}, with max index: {1} with simliarity shape {2}'.format(i, i+chunk, sim.shape))
+        for n in range(len(sim)):
+            temp.append(sim.detach().cpu().numpy()[n])
+        if i % 50 == 0:
+            print('Batch... [{}/{}]'.format(
+                i+1, len(features)))
+    temp = np.asarray(temp)
+    j = np.argsort(temp)
+    out = [dataset[i] for i in j[:k]]
     return out
 
 #TODO: implement k-means either from sklearn, for kmeans coreset selection.

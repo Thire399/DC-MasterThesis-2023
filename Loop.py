@@ -7,43 +7,44 @@ import torch.nn as nn
 import torch.functional as F
 import torch.optim as optim
 import Models as M
+import re
 from torchvision import models
 from carbontracker.tracker import CarbonTracker
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import precision_recall_curve
 os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
 
-####### PARAMETERS #######
-
-model = models.alexnet(pretrained = False)
-model.classifier[6] = nn.Linear(in_features=4096, out_features = 2, bias=True)
-
-#model = models.resnet50(pretrained = False)
-#model.fc = nn.Linear(in_features=1024, out_features = 2, bias=True)
+######## PARAMETERS #######
 #
-#model = M.UNet(enc_chs = (3, 64, 128, 256, 512, 1024)
-#               , dec_chs = (1024, 512, 256, 128, 64)
-#               , num_class = 1
-#               , df = 4096) # binary classification = 1.
-
-#Data parameters
-dataSet      = 'chest_xray'
-datatype     = ''
-os.makedirs('Data/Loss_chest_xray/test', exist_ok = True)
-costumLabel  = '64x64Full'
-dev = True
-#model parameters
-patience     = 10 #
-delta        = 1e-7
-epochs       = 200
-
-learningRate = 1e-5 #add weight decay weight_decay=1e-5
-optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.5)#optim.Adam(model.parameters(), lr = learningRate)
-loss_Fun     = nn.CrossEntropyLoss()
-batch_size   = 64
-saveModel    = True
-figSave      = False
-####### PARAMETERS #######
+#model = models.alexnet(pretrained = False)
+#model.classifier[6] = nn.Linear(in_features=4096, out_features = 2, bias=True)
+#
+##model = models.resnet50(pretrained = False)
+##model.fc = nn.Linear(in_features=1024, out_features = 2, bias=True)
+##
+##model = M.UNet(enc_chs = (3, 64, 128, 256, 512, 1024)
+##               , dec_chs = (1024, 512, 256, 128, 64)
+##               , num_class = 1
+##               , df = 4096) # binary classification = 1.
+#
+##Data parameters
+#dataSet      = 'chest_xray'
+#datatype     = ''
+#os.makedirs('Data/Loss_chest_xray/test', exist_ok = True)
+#costumLabel  = '64x64Full'
+#dev = True
+##model parameters
+#patience     = 10 #
+#delta        = 1e-6
+#epochs       = 200
+#
+#learningRate = 1e-5 #add weight decay weight_decay=1e-5
+#optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.5)#optim.Adam(model.parameters(), lr = learningRate)
+#loss_Fun     = nn.CrossEntropyLoss()
+#batch_size   = 64
+#saveModel    = True
+#figSave      = False
+######## PARAMETERS #######
 
 # Maybe move to another file?
 def PRAUC(pred, Target, ep):
@@ -68,31 +69,33 @@ def PRAUC(pred, Target, ep):
     bestT = T[ix]
     print('Best Threshold=%f, F-Score=%.3f' % (T[ix], fscore[ix]))
 
-    no_skill = len(Target[Target == 1]) / len(Target)
-    plt.plot([0,1], [no_skill,no_skill], linestyle='--', label='No Skill')
-    plt.plot(R, P, marker='.', label = 'Logistic')
-    legend = plt.legend(loc = 'upper right', frameon = 1)
-    frame = legend.get_frame()
-    frame.set_facecolor('grey')
-    frame.set_edgecolor('black')
-    plt.xlabel ('Recall')
-    plt.ylabel('Precision')
-    plt.title('Precision Recall curve')
-    plt.show()
+    #no_skill = len(Target[Target == 1]) / len(Target)
+    #plt.plot([0,1], [no_skill,no_skill], linestyle='--', label='No Skill')
+    #plt.plot(R, P, marker='.', label = 'Logistic')
+    #legend = plt.legend(loc = 'upper right', frameon = 1)
+    #frame = legend.get_frame()
+    #frame.set_facecolor('grey')
+    #frame.set_edgecolor('black')
+    #plt.xlabel ('Recall')
+    #plt.ylabel('Precision')
+    #plt.title('Precision Recall curve')
+    #plt.show()
     return P[ix], R[ix], bestT
 
 def TrainLoop(
             train_Loader
             , val_Loader
-            , model     = model
-            , patience  = patience
-            , delta     = delta
-            , epochs    = epochs
-            , optimizer = optimizer
-            , loss_Fun  = loss_Fun
-            , modelSave = saveModel
-            , figSave = figSave
-            , dev = dev
+            , model
+            , patience
+            , delta
+            , epochs
+            , optimizer
+            , loss_Fun
+            , modelSave
+            , figSave
+            , dataSet
+            , costumLabel
+            , dev = False
             ):
     #tracker = CarbonTracker(epochs=epochs)
     #### -- Set up -- ####
@@ -108,17 +111,15 @@ def TrainLoop(
 
     now = time.strftime("%Y%m%d-%H%M%S") #save file as current time stamp - better format to save file?
     if dev:
-        early_stopping = M.EarlyStopping( patience = patience,
-                                verbose = True,
-                                delta   = delta,
-                                path    =  mkPathLoss + '/test' + '/model' + costumLabel + model._get_name() + now,
-                                saveModel = modelSave)
+        early_path = mkPathLoss + '/test' + '/model' + costumLabel + model._get_name() + now
+
     else:
-        early_stopping = M.EarlyStopping( patience = patience,
-                        verbose = True,
-                        delta   = delta,
-                        path    =  mkPathLoss + '/model' + costumLabel + model._get_name() + now,
-                        saveModel = modelSave)
+        early_path = mkPathLoss + '/model' + costumLabel + model._get_name() + now
+    early_stopping = M.EarlyStopping( patience = patience,
+                    verbose = True,
+                    delta   = delta,
+                    path    =  early_path,
+                    saveModel = modelSave)
 
         
     train_Loss = []
@@ -206,30 +207,44 @@ def TrainLoop(
             plt.savefig(mkPathLoss + '/Figs/'+ costumLabel + model._get_name() + now + '.png', bbox_inches='tight', dpi = 400)
     plt.show()
 
-    #new trying something with PRAUC
+    return None
+
+def eval_model(model, dataset, dev, val_Loader,  model_filePath = None):
+    torch.cuda.empty_cache()
+        #new trying something with PRAUC
     prediction = []
     targetList = []
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print('Using: ', device)
+    if device == 'cpu':
+         print('Not gonna run on the CPU')
+         return None
     if dev:
-        model.load_state_dict(torch.load(mkPathLoss + '/test' + '/model' + costumLabel + model._get_name() + now))
+        if model_filePath == None:
+            model_filePath = np.sort(np.asarray([os.path.join('Data/Loss_' + dataset + '/test', file) for file 
+                                                 in os.listdir('Data/Loss_' + dataset + '/test') 
+                                                 if re.search('model', file)]))[-1]
+            print(f'no model specified.\nUsing last trained model: "{model_filePath}"')
+        model.load_state_dict(torch.load(model_filePath))
     else:
-        model.load_state_dict(torch.load(mkPathLoss + '/model' + costumLabel + model._get_name() + now))
-        
-    
+        if model_filePath == None:
+            model_filePath = np.sort(np.asarray([os.path.join('/Data/Loss_' + dataset, file) for file 
+                                                 in os.listdir('/Data/Loss_' + dataset)
+                                                   if re.search('model', file)]))[-1]       
+        model.load_state_dict(torch.load(model_filePath))
+    model.to(device)
+    model.eval()
     for batch, (data, target) in enumerate(val_Loader, 1):
-        optimizer.zero_grad() # a clean up step for PyTorch
         out = model(data.to(device))
         for p in out.detach().cpu().numpy():
             prediction.append(np.argmax(p))
-        targetList.append(target.detach().cpu().numpy())
+        for t in target.detach().cpu().numpy():
+            targetList.append(t)
         if batch % 2 == 0: #For printing
-            print(4*' ', '===> F-Score: [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+            print(4*' ', '===> F-Score: [{}/{} ({:.0f}%)]\t'.format(
                 batch * len(data), len(val_Loader.dataset),
-                100. * batch / len(val_Loader),
-                np.mean(batchVal_loss)))
-        break
-    #print('Prediction shape: {0}\n{1}'.format(np.asarray(prediction).shape, prediction))
-    #print('Target shape: {0}\n{1}'.format(np.asarray(targetList).shape, targetList))
-    targetList = np.asarray(targetList).flatten()
+                100. * batch / len(val_Loader)))
+    targetList = np.array(targetList).flatten()
     Precision, Recall, Threshold = PRAUC(prediction, targetList, ep = 1e-5)
     print('Precision: {0}\nRecall: {1}\nThreshold: {2} (not used)'.format(Precision, Recall, Threshold))
 
@@ -238,26 +253,26 @@ def TrainLoop(
 
 ####### Main Calls ########
 
-xTrain = torch.load('Data/Proccesed/'+ dataSet +'/' + datatype + 'trainX.pt')
-yTrain = torch.load('Data/Proccesed/'+ dataSet +'/' + datatype + 'trainY.pt')
-
-xVal = torch.load('Data/Proccesed/'+ dataSet + '/' + datatype +'tempValX.pt')
-yVal = torch.load('Data/Proccesed/'+ dataSet + '/' + datatype +'tempValY.pt')
-
-xTrain = xTrain.repeat(1, 3, 1, 1) # only for pretrained model
-xVal = xVal.repeat(1, 3, 1, 1)     # only for pretrained model
-
-train_Set = torch.utils.data.TensorDataset(xTrain, yTrain)
-train_Loader = torch.utils.data.DataLoader(train_Set,#
-                                            batch_size = batch_size,
-                                            shuffle = True,
-                                            num_workers = 0)
-
-val_Set = torch.utils.data.TensorDataset(xVal, yVal)
-val_Loader = torch.utils.data.DataLoader(val_Set,
-                                            batch_size = batch_size,
-                                            shuffle = True,
-                                            num_workers = 0)
+#xTrain = torch.load('Data/Proccesed/'+ dataSet +'/' + datatype + 'trainX.pt')
+#yTrain = torch.load('Data/Proccesed/'+ dataSet +'/' + datatype + 'trainY.pt')
+#
+#xVal = torch.load('Data/Proccesed/'+ dataSet + '/' + datatype +'tempValX.pt')
+#yVal = torch.load('Data/Proccesed/'+ dataSet + '/' + datatype +'tempValY.pt')
+#
+#xTrain = xTrain.repeat(1, 3, 1, 1) # only for pretrained model
+#xVal = xVal.repeat(1, 3, 1, 1)     # only for pretrained model
+#
+#train_Set = torch.utils.data.TensorDataset(xTrain, yTrain)
+#train_Loader = torch.utils.data.DataLoader(train_Set,
+#                                            batch_size = batch_size,
+#                                            shuffle = True,
+#                                            num_workers = 0)
+#
+#val_Set = torch.utils.data.TensorDataset(xVal, yVal)
+#val_Loader = torch.utils.data.DataLoader(val_Set,
+#                                            batch_size = batch_size,
+#                                            shuffle = True,
+#                                            num_workers = 0)
 
 #param_grid = {
 #    'batch_size': [16, 64],
@@ -268,21 +283,22 @@ val_Loader = torch.utils.data.DataLoader(val_Set,
 #
 #print(grid_result)
 
-p , t = TrainLoop(train_Loader = train_Loader
-        , val_Loader = val_Loader
-        , model    = model
-        , patience = patience
-        , delta    = 1e-4
-        , epochs = epochs
-        , optimizer = optimizer
-        , loss_Fun = loss_Fun
-        , modelSave = saveModel
-        , figSave = figSave
-        , dev = dev
-        )
+# p = prediction, t = target
+#TrainLoop(train_Loader = train_Loader
+#        , val_Loader = val_Loader
+#        , model    = model
+#        , patience = patience
+#        , delta    = 1e-4
+#        , epochs = epochs
+#        , optimizer = optimizer
+#        , loss_Fun = loss_Fun
+#        , modelSave = saveModel
+#        , figSave = figSave
+#        , dev = dev
+#        )
 
-print('Accuracy: {0}'.format((sum([p == t]))/yVal.shape[0]))
-
-
-#train = torch.load('Data/Loss_chest_xray/train_lossResNet20230309-211533.pt').tolist()
-#val = torch.load('Data/Loss_chest_xray/val_lossResNet20230309-211533.pt').tolist()
+#p, t = eval_model(model = model
+#                  , dataset = dataSet
+#                  , dev = dev
+#                  , val_Loader = val_Loader)
+#print('Accuracy on temp ValidationSet: {0}     --> (sum(Prediction = Target))/n_sampels'.format(np.sum([p == t])/t.shape[0]))

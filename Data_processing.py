@@ -16,14 +16,14 @@ directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'
 os.chdir(directory)
 trainSize = 400
 valSize = 100
-imgSize = (64, 64)
+imgSize = (128, 128)
 vira = False
 
 
 #Dataset to create
-createANew = False
+createANew = True
 generateRandom = False
-generateDistriution = True
+generateDistriution = False
 
 
 #function to get all file names in the folder.
@@ -171,8 +171,6 @@ if ((os.path.isfile('Proccesed/chest_xray/trainX.pt') == False) and (os.path.isf
     torch.save(x, f = 'Proccesed/chest_xray/valX.pt')
     torch.save(y, f = 'Proccesed/chest_xray/valY.pt')
     print('Made Train and Val set.')
-#else:
-#    print('Already made full val and training data.')
 
 
 if generateDistriution == True:
@@ -237,4 +235,3 @@ if generateDistriution == True:
 # newimg.show()
 # print(np.array(newimg).shape)
 # print(np.array(newimg))
-

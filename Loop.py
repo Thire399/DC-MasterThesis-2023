@@ -12,39 +12,6 @@ from torchvision import models
 from carbontracker.tracker import CarbonTracker
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import precision_recall_curve
-os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
-
-######## PARAMETERS #######
-#
-#model = models.alexnet(pretrained = False)
-#model.classifier[6] = nn.Linear(in_features=4096, out_features = 2, bias=True)
-#
-##model = models.resnet50(pretrained = False)
-##model.fc = nn.Linear(in_features=1024, out_features = 2, bias=True)
-##
-##model = M.UNet(enc_chs = (3, 64, 128, 256, 512, 1024)
-##               , dec_chs = (1024, 512, 256, 128, 64)
-##               , num_class = 1
-##               , df = 4096) # binary classification = 1.
-#
-##Data parameters
-#dataSet      = 'chest_xray'
-#datatype     = ''
-#os.makedirs('Data/Loss_chest_xray/test', exist_ok = True)
-#costumLabel  = '64x64Full'
-#dev = True
-##model parameters
-#patience     = 10 #
-#delta        = 1e-6
-#epochs       = 200
-#
-#learningRate = 1e-5 #add weight decay weight_decay=1e-5
-#optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.5)#optim.Adam(model.parameters(), lr = learningRate)
-#loss_Fun     = nn.CrossEntropyLoss()
-#batch_size   = 64
-#saveModel    = True
-#figSave      = False
-######## PARAMETERS #######
 
 # Maybe move to another file?
 def PRAUC(pred, Target, ep):
@@ -55,12 +22,7 @@ def PRAUC(pred, Target, ep):
     thressholds, by using the sklearn implementation
     https://medium.com/@douglaspsteen/precision-recall-curves-d32e5b290248
     '''
-#    pred = pred.contiguous().view(-1)
-#    pred = pred.cpu().detach().numpy()
-#    Target = Target.contiguous().view(-1)
-#    Target = Target.cpu().detach().numpy()
-    
-    #rewrite into a function.
+
     P, R, T = precision_recall_curve(y_true = Target, probas_pred = pred)
     fscore = (2 * P * R) / (P + R + ep)
 
@@ -69,35 +31,21 @@ def PRAUC(pred, Target, ep):
     bestT = T[ix]
     print('Best Threshold=%f, F-Score=%.3f' % (T[ix], fscore[ix]))
 
-    #no_skill = len(Target[Target == 1]) / len(Target)
-    #plt.plot([0,1], [no_skill,no_skill], linestyle='--', label='No Skill')
-    #plt.plot(R, P, marker='.', label = 'Logistic')
-    #legend = plt.legend(loc = 'upper right', frameon = 1)
-    #frame = legend.get_frame()
-    #frame.set_facecolor('grey')
-    #frame.set_edgecolor('black')
-    #plt.xlabel ('Recall')
-    #plt.ylabel('Precision')
-    #plt.title('Precision Recall curve')
-    #plt.show()
-    return P[ix], R[ix], bestT
+    return P[ix], R[ix], bestT, fscore
 
-def TrainLoop(
-            train_Loader
-            , val_Loader
-            , model
-            , patience
-            , delta
-            , epochs
-            , optimizer
-            , loss_Fun
-            , modelSave
-            , figSave
-            , dataSet
-            , costumLabel
-            , dev = False
-            ):
-    #tracker = CarbonTracker(epochs=epochs)
+def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimizer, loss_Fun, modelSave, figSave, dataSet, costumLabel, dev = False):
+    
+    now = time.strftime("%Y%m%d-%H%M%S") #save file as current time stamp - better format to save file?
+    mkPathLoss = 'Data/Loss_' + dataSet
+    if dev:
+        print()
+        tempPath = mkPathLoss + '/test/CarbonLogs'
+        os.makedirs(tempPath, exist_ok= True)
+    else:
+        tempPath = mkPathLoss + '/CarbonLogs'
+        os.makedirs(tempPath, exist_ok= True)
+    tracker = CarbonTracker(epochs=epochs, log_dir = tempPath, log_file_prefix = costumLabel + model._get_name())
+
     #### -- Set up -- ####
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print('Using: ', device)
@@ -105,11 +53,10 @@ def TrainLoop(
          print('Not gonna run on the CPU')
          return None
 
-    mkPathLoss = 'Data/Loss_' + dataSet
+
     os.makedirs(mkPathLoss , exist_ok = True)
     os.makedirs(mkPathLoss + '/Figs' , exist_ok = True)
 
-    now = time.strftime("%Y%m%d-%H%M%S") #save file as current time stamp - better format to save file?
     if dev:
         early_path = mkPathLoss + '/test' + '/model' + costumLabel + model._get_name() + now
 
@@ -120,7 +67,6 @@ def TrainLoop(
                     delta   = delta,
                     path    =  early_path,
                     saveModel = modelSave)
-
         
     train_Loss = []
     val_Loss = []
@@ -131,7 +77,7 @@ def TrainLoop(
     #### -- Main loop -- ####
     model.to(device)
     for epoch in range(epochs):
-        #tracker.epoch_start()
+        tracker.epoch_start()
         batchTrain_loss = []
         batchVal_loss = []
 
@@ -164,7 +110,7 @@ def TrainLoop(
                     100. * batch / len(val_Loader),
                     np.mean(batchVal_loss)))
 
-        #tracker.epoch_end()
+        tracker.epoch_end()
         temp_ValLoss = np.mean(batchVal_loss)
         val_Loss.append(temp_ValLoss)
 
@@ -172,12 +118,12 @@ def TrainLoop(
 
         if early_stopping.early_stop:
             print("Early stopping")
-            #tracker.stop()
+            #racker.stop()
             break
         else:
             continue
-    #if not early_stopping.early_stop:
-        #tracker.stop()
+    if not early_stopping.early_stop:
+        tracker.stop()
     #### -- Save info -- ####
     if modelSave == True:
         t_Loss = torch.tensor(train_Loss)
@@ -206,10 +152,13 @@ def TrainLoop(
         else:
             plt.savefig(mkPathLoss + '/Figs/'+ costumLabel + model._get_name() + now + '.png', bbox_inches='tight', dpi = 400)
     plt.show()
+    time.sleep(1)
+    plt.close()
+
 
     return None
 
-def eval_model(model, dataset, dev, val_Loader,  model_filePath = None):
+def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '64x64'):
     torch.cuda.empty_cache()
         #new trying something with PRAUC
     prediction = []
@@ -223,14 +172,15 @@ def eval_model(model, dataset, dev, val_Loader,  model_filePath = None):
         if model_filePath == None:
             model_filePath = np.sort(np.asarray([os.path.join('Data/Loss_' + dataset + '/test', file) for file 
                                                  in os.listdir('Data/Loss_' + dataset + '/test') 
-                                                 if re.search('model', file)]))[-1]
+                                                 if re.search('model', file) and re.search(size, file) ]))[-1]
             print(f'no model specified.\nUsing last trained model: "{model_filePath}"')
         model.load_state_dict(torch.load(model_filePath))
     else:
         if model_filePath == None:
-            model_filePath = np.sort(np.asarray([os.path.join('/Data/Loss_' + dataset, file) for file 
-                                                 in os.listdir('/Data/Loss_' + dataset)
-                                                   if re.search('model', file)]))[-1]       
+            model_filePath = np.sort(np.asarray([os.path.join('Data/Loss_' + dataset, file) for file 
+                                                 in os.listdir('Data/Loss_' + dataset)
+                                                   if re.search('model', file) and re.search(size, file)]))[-1]  
+            print(f'no model specified.\nUsing last trained model: "{model_filePath}"')     
         model.load_state_dict(torch.load(model_filePath))
     model.to(device)
     model.eval()
@@ -245,10 +195,10 @@ def eval_model(model, dataset, dev, val_Loader,  model_filePath = None):
                 batch * len(data), len(val_Loader.dataset),
                 100. * batch / len(val_Loader)))
     targetList = np.array(targetList).flatten()
-    Precision, Recall, Threshold = PRAUC(prediction, targetList, ep = 1e-5)
+    Precision, Recall, Threshold, Fscore = PRAUC(prediction, targetList, ep = 1e-5)
     print('Precision: {0}\nRecall: {1}\nThreshold: {2} (not used)'.format(Precision, Recall, Threshold))
 
-    return prediction, targetList
+    return prediction, targetList, Fscore
 
 
 ####### Main Calls ########

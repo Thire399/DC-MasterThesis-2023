@@ -16,7 +16,7 @@ directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'
 os.chdir(directory)
 trainSize = 400
 valSize = 100
-imgSize = (128, 128)
+imgSize = (64, 64)
 vira = False
 
 
@@ -57,7 +57,7 @@ def SaveToTensor(images, h = 32, w = 32):
         if k % 50 == 0:
             print(f'iteration {k}/{len(images)}')
         img = Image.open(i)
-        newImg = np.array(img.resize((h, w)).convert('L')).astype(np.float32) #resizes and converts to grayscale
+        newImg = np.array(img.resize((h, w)).convert('L')).astype(np.float32)/255#resizes and converts to grayscale
         #, Image.ANTIALIAS) #'Provides smothing' should not perform this probably.
         imgList.append(torch.unsqueeze(torch.from_numpy(newImg), 0)) # ndarray -> tensor and adding 1 dimension (C x H x W)
         k += 1
@@ -171,7 +171,7 @@ if ((os.path.isfile('Proccesed/chest_xray/trainX.pt') == False) and (os.path.isf
     torch.save(x, f = 'Proccesed/chest_xray/valX.pt')
     torch.save(y, f = 'Proccesed/chest_xray/valY.pt')
     print('Made Train and Val set.')
-
+    
 
 if generateDistriution == True:
     print('\n\nStarting coreset selection distribution.')

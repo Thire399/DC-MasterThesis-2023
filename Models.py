@@ -111,6 +111,31 @@ class resnet(nn.Module):
 
 
 
+##################################### 
+### Temp condensation model ###
+
+class CD_temp(nn.Module):
+    def __init__(self):
+        #remake to use conv.
+        super(CD_temp, self).__init__()
+        self.fc1 = nn.Linear(10, 20)
+        self.fc2 = nn.Linear(20, 30)
+
+        # initialize the weights
+        self._init_weights()
+
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+        return None
+    def forward(self, x):
+        out = self.fc1(x)
+        #add sigmoid.
+        out = self.fc2(out)
+
+
+
 
 
 ######## Early Stopping ############

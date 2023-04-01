@@ -29,18 +29,18 @@ model.classifier[6] = nn.Linear(in_features=4096, out_features = 2, bias=True)
 dataSet      = 'chest_xray'
 datatype     = ''
 os.makedirs('Data/Loss_chest_xray/test', exist_ok = True)
-costumLabel  = '128x128Full'
-dev = False
+costumLabel  = '64x64Full'
+dev = True
 #model parameters
 patience     = 10 #
 delta        = 1e-6
-epochs       = 4
+epochs       = 400
 
-learningRate = 1e-5 #add weight decay weight_decay=1e-5
+learningRate = 1e-3 #add weight decay weight_decay=1e-5
 optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.5)#optim.Adam(model.parameters(), lr = learningRate)
 loss_Fun     = nn.CrossEntropyLoss()
 batch_size   = 64
-saveModel    = False
+saveModel    = True
 figSave      = False
 ####### PARAMETERS #######
 
@@ -84,40 +84,40 @@ def __main__():
                 , costumLabel = costumLabel
                 , dev = dev
                 )
-
-        p, t, fscore = Loop.eval_model(model = model
-                        , dataset = dataSet
-                        , dev = dev
-                        , val_Loader = val_Loader
-                        , size = costumLabel)
+        if saveModel:
+                p, t, fscore = Loop.eval_model(model = model
+                                , dataset = dataSet
+                                , dev = dev
+                                , val_Loader = val_Loader
+                                , size = costumLabel)
                 
 
         print('Accuracy on temp ValidationSet: {0}     --> (sum(Prediction = Target))/n_sampels'.format(np.sum([p == t])/t.shape[0]))
 
         parser.print_aggregate(log_dir= 'Data/Loss_' + dataSet + '/CarbonLogs')
-
-        import pandas as pd
-        import plotly.graph_objects as go
-
-        fig = go.Figure(data=go.Scatterpolar(r = [10.0, 0.33, epochs]
-                                               ,theta = ['fscore', "time", "epoch"],
-                                                fill='toself'
-                                             )
-                                         )
-        print(fscore)
-        fig.update_layout(
-                polar=dict(
-                radialaxis=dict(
-                visible=True
-                ),
-            ),
-            showlegend=False
-        )
-        fig.show()
-        #df = pd.DataFrame(dict(r = [fscore, 0.33, epochs]
-        #                        ,theta = ['fscore', "time", "epoch"]))
-        #fig = px.line_polar(df, r='r', theta='theta', line_close=True)
-        #fig.show()
+#
+#        import pandas as pd
+#        import plotly.graph_objects as go
+#
+#        fig = go.Figure(data=go.Scatterpolar(r = [10.0, 0.33, epochs]
+#                                               ,theta = ['fscore', "time", "epoch"],
+#                                                fill='toself'
+#                                             )
+#                                         )
+#        print(fscore)
+#        fig.update_layout(
+#                polar=dict(
+#                radialaxis=dict(
+#                visible=True
+#                ),
+#            ),
+#            showlegend=False
+#        )
+#        fig.show()
+#        #df = pd.DataFrame(dict(r = [fscore, 0.33, epochs]
+#        #                        ,theta = ['fscore', "time", "epoch"]))
+#        #fig = px.line_polar(df, r='r', theta='theta', line_close=True)
+#        #fig.show()
         return None
 
 

@@ -12,6 +12,7 @@ from torchvision import models
 from carbontracker.tracker import CarbonTracker
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import precision_recall_curve
+#from sklearn.metrics import f1_score
 
 # Maybe move to another file?
 def PRAUC(pred, Target, ep):
@@ -44,7 +45,12 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
     else:
         tempPath = mkPathLoss + '/CarbonLogs'
         os.makedirs(tempPath, exist_ok= True)
-    tracker = CarbonTracker(epochs=epochs, log_dir = tempPath, log_file_prefix = costumLabel + model._get_name())
+    tracker = CarbonTracker(epochs=epochs, 
+                            log_dir = tempPath,
+                            log_file_prefix = costumLabel + model._get_name(),
+                            monitor_epochs = -1,
+                            update_interval = 0.01
+                            )
 
     #### -- Set up -- ####
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -58,7 +64,7 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
     os.makedirs(mkPathLoss + '/Figs' , exist_ok = True)
 
     if dev:
-        early_path = mkPathLoss + '/test' + '/model' + costumLabel + model._get_name() + now
+        early_path = mkPathLoss + '/test/model' + costumLabel + model._get_name() + now
 
     else:
         early_path = mkPathLoss + '/model' + costumLabel + model._get_name() + now
@@ -96,6 +102,7 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
                     100. * batch / len(train_Loader),
                     np.mean(batchTrain_loss)))
         train_Loss.append(np.mean(batchTrain_loss))
+        time.sleep(2)
 
         # Val Data.
         model.eval()
@@ -118,7 +125,7 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
 
         if early_stopping.early_stop:
             print("Early stopping")
-            #racker.stop()
+            tracker.stop()
             break
         else:
             continue
@@ -144,7 +151,7 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
     frame.set_edgecolor('black')
     plt.xlabel ('Epoch')
     plt.ylabel('Loss')
-    plt.title('Loss per epoch')
+    plt.title(f'{model._get_name()} {costumLabel} Loss per epoch')
     plt.grid()
     if figSave == True:
         if dev:
@@ -172,15 +179,19 @@ def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '
         if model_filePath == None:
             model_filePath = np.sort(np.asarray([os.path.join('Data/Loss_' + dataset + '/test', file) for file 
                                                  in os.listdir('Data/Loss_' + dataset + '/test') 
-                                                 if re.search('model', file) and re.search(size, file) ]))[-1]
+                                                 if re.search('model', file) and re.search(size+model._get_name(), file) ]))[-1]
             print(f'no model specified.\nUsing last trained model: "{model_filePath}"')
+        else:
+            print(f'Model specified.\nUsing trained model: "{model_filePath}"') 
         model.load_state_dict(torch.load(model_filePath))
     else:
         if model_filePath == None:
             model_filePath = np.sort(np.asarray([os.path.join('Data/Loss_' + dataset, file) for file 
                                                  in os.listdir('Data/Loss_' + dataset)
-                                                   if re.search('model', file) and re.search(size, file)]))[-1]  
+                                                   if re.search('model', file) and re.search(size+model._get_name(), file)]))[-1]  
             print(f'no model specified.\nUsing last trained model: "{model_filePath}"')     
+        else:
+            print(f'Model specified.\nUsing trained model: "{model_filePath}"') 
         model.load_state_dict(torch.load(model_filePath))
     model.to(device)
     model.eval()
@@ -197,7 +208,7 @@ def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '
     targetList = np.array(targetList).flatten()
     Precision, Recall, Threshold, Fscore = PRAUC(prediction, targetList, ep = 1e-5)
     print('Precision: {0}\nRecall: {1}\nThreshold: {2} (not used)'.format(Precision, Recall, Threshold))
-
+    #print('Testing f1 score:{0}'.format(f1_score(targetList, prediction, average = 'binary')))
     return prediction, targetList, Fscore
 
 

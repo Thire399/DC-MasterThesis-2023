@@ -118,9 +118,11 @@ class CD_temp(nn.Module):
     def __init__(self):
         #remake to use conv.
         super(CD_temp, self).__init__()
-        self.fc1 = nn.Linear(10, 20)
-        self.fc2 = nn.Linear(20, 30)
-
+        self.Conv1  = nn.Conv2d(3, 64)
+        self.Conv2  = nn.Conv2d(64, 128)
+        self.Conv3  = nn.Conv2d(128, 256)
+        self.sigmod = nn.Sigmoid()
+        self.ReLu   = nn.ReLU() 
         # initialize the weights
         self._init_weights()
 

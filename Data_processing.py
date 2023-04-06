@@ -14,15 +14,14 @@ from sklearn.model_selection import train_test_split
 # TODO: update function description to standard.
 directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'
 os.chdir(directory)
-trainSize = 400
-valSize = 100
+trainSize = 300
 imgSize = (64, 64)
 vira = False
 
 
 #Dataset to create
-createANew = True
-generateRandom = False
+createANew = False
+generateRandom = True
 generateDistriution = False
 
 
@@ -208,8 +207,8 @@ if generateDistriution == True:
     print('Saving tensor...')
 
     x, y = DataPrep('Proccesed/chest_xray/train/normalDistribution.pt', 'Proccesed/chest_xray/train/pneumoniaDistribution.pt')
-    torch.save(x, f = 'Proccesed/chest_xray/DistributionTrainX.pt')
-    torch.save(y, f = 'Proccesed/chest_xray/DistributionTrainY.pt')
+    torch.save(x, f = 'Proccesed/chest_xray/DistributiontrainX.pt')
+    torch.save(y, f = 'Proccesed/chest_xray/DistributiontrainY.pt')
     print('Done.')
     #ValData
     print('\nRegenerating validation data...')

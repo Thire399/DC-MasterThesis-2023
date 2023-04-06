@@ -6,6 +6,7 @@ import os
 import warnings
 import Data_processing as DP
 warnings.filterwarnings("ignore")
+
 def distance(A, B):
     upper = A* B
     lower = torch.norm(A)*torch.norm(B)
@@ -22,6 +23,15 @@ def gen_Y(size):
     class_0 = torch.tensor(np.asarray([0]*int(size/2)))
     class_1 = torch.tensor(np.asarray([1]*int(size/2)))
     return torch.cat((class_0, class_1))
+
+def apply_Gradient(Gradient):
+        
+        return None
+
+def fit(model, ):
+
+    #Should return Loss
+    return None
 
 def GradientMatching(model, T_x, T_y, S_x, S_y, k, t, c, lr_Theta, lr_S, batch_size = 64):
     #S_shape = (size_of_dataset, 1, height, width) 
@@ -53,6 +63,7 @@ def GradientMatching(model, T_x, T_y, S_x, S_y, k, t, c, lr_Theta, lr_S, batch_s
                 S_BatchX = sampleRandom(S_DataX, batch_size = batch_size)                
                 S_BatchY = sampleRandom(S_DataY, batch_size = batch_size)
                 print(T_BatchX.shape)
+                break
                 print('not implemented')
     return None
 

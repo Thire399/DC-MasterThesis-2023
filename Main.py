@@ -14,34 +14,34 @@ os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
 
 ####### PARAMETERS #######
 
-model = models.alexnet(pretrained = False)
-model.classifier[6] = nn.Linear(in_features=4096, out_features = 2, bias=True)
+#model = models.alexnet(pretrained = False)
+#model.classifier[6] = nn.Linear(in_features=4096, out_features = 2, bias=True)
 
 #model = models.resnet50(pretrained = False)
 #model.fc = nn.Linear(in_features=2048, out_features = 2, bias=True)
-#
-#model = M.UNet(enc_chs = (3, 64, 128, 256, 512, 1024)
-#               , dec_chs = (1024, 512, 256, 128, 64)
-#               , num_class = 1
-#               , df = 16384) # binary classification = 1.
+
+model = M.UNet(enc_chs = (3, 64, 128, 256, 512, 1024)
+               , dec_chs = (1024, 512, 256, 128, 64)
+               , num_class = 1
+               , df = 4096) # binary classification = 1.
 
 #Data parameters
 dataSet      = 'chest_xray'
-datatype     = ''
+datatype     = 'Random'
 os.makedirs('Data/Loss_chest_xray/test', exist_ok = True)
-costumLabel  = '64x64Full'
-dev = True
+costumLabel  = '64x64Random' 
+dev = False
 #model parameters
 patience     = 10 #
 delta        = 1e-6
 epochs       = 400
 
-learningRate = 1e-3 #add weight decay weight_decay=1e-5
+learningRate = 1e-5 #add weight decay weight_decay=1e-5
 optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.5)#optim.Adam(model.parameters(), lr = learningRate)
 loss_Fun     = nn.CrossEntropyLoss()
 batch_size   = 64
 saveModel    = True
-figSave      = False
+figSave      = True
 ####### PARAMETERS #######
 
 ####### Main Calls ########

@@ -118,26 +118,41 @@ class CD_temp(nn.Module):
     def __init__(self):
         #remake to use conv.
         super(CD_temp, self).__init__()
-        self.Conv1  = nn.Conv2d(3, 64)
-        self.Conv2  = nn.Conv2d(64, 128)
-        self.Conv3  = nn.Conv2d(128, 256)
-        self.sigmod = nn.Sigmoid()
-        self.ReLu   = nn.ReLU() 
+        self.Conv1      = nn.Conv2d(3  , 64 , 3, padding= 1)
+        self.Conv2      = nn.Conv2d(64 , 128, 3, padding= 1)
+        self.Conv3      = nn.Conv2d(128, 64, 3, padding= 1)
+        self.Conv4      = nn.Conv2d(64, 3, 3, padding= 1)
+        self.sigmod     = nn.Sigmoid()
+        self.ReLu       = nn.ReLU()
+        self.maxpooling = nn.MaxPool2d(2)
+        self.fc         = nn.Linear(3072, 2)
         # initialize the weights
         self._init_weights()
 
     def _init_weights(self):
         for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
+            if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
+                nn.init.xavier_uniform_(m.weight)#, mean=0.0, std=0.01)
+                if hasattr(m, 'weight') and m.weight is not None:
+                    m.weight.requires_grad_(True)
+
         return None
+
+
     def forward(self, x):
-        out = self.fc1(x)
-        #add sigmoid.
-        out = self.fc2(out)
-
-
-
+        out = self.Conv1(x)
+        out = self.ReLu(out)
+        out = self.Conv2(out)
+        out = self.ReLu(out)
+        out = self.Conv3(out)
+        out = self.ReLu(out)
+        out = self.Conv4(out)
+        out = self.ReLu(out)
+        out = self.maxpooling(out)
+        out = self.sigmod(out)
+        out = torch.flatten(out, start_dim = 1)
+        out = self.fc(out)
+        return out
 
 
 ######## Early Stopping ############

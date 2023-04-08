@@ -22,9 +22,9 @@ Chest_Xray = False
 
 
 #Dataset to create
-createANew = False
+createANew = True
 generateRandom = False
-generateDistriution = True
+generateDistriution = False
 
 
 #function to get all file names in the folder.
@@ -249,7 +249,7 @@ if alzimers == True:
         print('Saving Tensors to: "Proccesed/Alzheimer_MRI/"')
         x, y = DataPrep('Proccesed/Alzheimer_MRI/train/trainnormal.pt', 'Proccesed/Alzheimer_MRI/train/trainDemented.pt')
         trainX, testX, trainY, testY = train_test_split(x, y, test_size = 0.1, random_state= 1)
-        trainX, valX, trianY, valY = train_test_split(trainX, trainY, test_size = 0.3, random_state= 1)
+        trainX, valX, trainY, valY = train_test_split(trainX, trainY, test_size = 0.3, random_state= 1)
         torch.save(trainX, f = 'Proccesed/Alzheimer_MRI/trainX.pt')
         torch.save(trainY, f = 'Proccesed/Alzheimer_MRI/trainY.pt')
         torch.save(valX, f = 'Proccesed/Alzheimer_MRI/ValX.pt')

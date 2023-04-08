@@ -6,13 +6,13 @@ from sklearn.cluster import KMeans
 import torch.nn.functional as F
 import gc
 
-def RandomSelection(fileNames = None, k = 200):
+def RandomSelection(fileNames = None, k = 200, seed = 1):
     '''
     Selects k random filenames. Default 200.
     '''
     try:
-        rand.seed(1)
-        return rand.choices(fileNames, k = k, )
+        rand.seed(seed)
+        return rand.choices(fileNames, k = k)
     except:
         print('Random selection: Failed')
 

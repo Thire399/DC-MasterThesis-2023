@@ -9,6 +9,7 @@ import torch.optim as optim
 import Data_processing as DP
 warnings.filterwarnings("ignore")
 
+#TODO: Remate into a class.
 def distance(A, B):
     _sum_ = 0
     for i in range(len(A)):
@@ -37,9 +38,6 @@ def gen_Y(size):
     class_1 = torch.tensor(np.asarray([1]*int(size/2)))
     return torch.cat((class_0, class_1))
 
-def apply_Gradient(Gradient):
-        
-        return None
 
 def GetGradient(model, x, y, loss_Fun):
     model.train()
@@ -109,6 +107,23 @@ def GradientMatching(model, T_x, T_y, S_x, S_y, k, t, c, lr_Theta, lr_S, batch_s
     return S_x, S_y
 
 
+class DistributionMatching():
+    def __init__(self, model, k = 200, batchSize = 64, syntheticSampleSize = 200):
+        self.model = model
+        self.k = k
+        self.batch_size = batchSize
+        S_x = torch.rand((syntheticSampleSize, 3, 64, 64))
+        S_y = gen_Y(S_x.shape[0])
+        self.synthetic = torch.utils.data.TensorDataset(S_x, S_y)
+
+        
+
+    
+        return None
+
+
+
+
 ####### PARAMETERS #######
 #Data parameters
 dataSet      = 'chest_xray'
@@ -121,9 +136,9 @@ print('preparing training data...')
 #Train data
 
 #Concat the two types
-xTrain, yTrain = DP.DataPrep('Data/Proccesed/chest_xray/train/trainnormal.pt', 'Data/Proccesed/chest_xray/train/trainpneumonia.pt')
+#xTrain, yTrain = DP.DataPrep('Data/Proccesed/chest_xray/train/trainnormal.pt', 'Data/Proccesed/chest_xray/train/trainpneumonia.pt')
 
-xTrain = xTrain.repeat(1, 3, 1, 1)
+#xTrain = xTrain.repeat(1, 3, 1, 1)
 
 #train_Set = torch.utils.data.TensorDataset(xTrain, yTrain)
 #train_Loader = torch.utils.data.DataLoader(train_Set,
@@ -131,22 +146,22 @@ xTrain = xTrain.repeat(1, 3, 1, 1)
 #                                        shuffle = True,
 #                                        num_workers = 0)
 
-S_x = torch.rand((200, 3, 64, 64))
-S_y = gen_Y(S_x.shape[0])
+#S_x = torch.rand((200, 3, 64, 64))
+#S_y = gen_Y(S_x.shape[0])
 #S_Set = torch.utils.data.TensorDataset(S_x, S_y)
 #S_Loader = torch.utils.data.DataLoader(S_Set,
 #                                        batch_size = 64,
 #                                        shuffle = False,
 #                                        num_workers = 0)
 
-model = M.CD_temp()
-print('\nStaring Condensation...\n')
-x, y = GradientMatching(model, xTrain, yTrain, S_x, S_y, k = 10, t = 10,c = 2, lr_Theta = 1, lr_S = 1)
-
-print(y[0])
-plt.imshow(S_x[0][0])
-plt.savefig('Data/Loss_chest_xray/test/Test.png', dpi = 400, bbox_inches = 'tight')
-plt.show()
+#model = M.CD_temp()
+#print('\nStaring Condensation...\n')
+#x, y = GradientMatching(model, xTrain, yTrain, S_x, S_y, k = 10, t = 10,c = 2, lr_Theta = 1, lr_S = 1)
+#
+#print(y[0])
+#plt.imshow(S_x[0][0])
+#plt.savefig('Data/Loss_chest_xray/test/Test.png', dpi = 400, bbox_inches = 'tight')
+#plt.show()
 
 '''
 import Models as M

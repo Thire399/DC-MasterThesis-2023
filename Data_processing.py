@@ -17,15 +17,13 @@ os.chdir(directory)
 trainSize = 300
 imgSize = (64, 64)
 vira = False
-alzimers = True
+alzimers = False
 Chest_Xray = False
 
-
 #Dataset to create
-createANew = True
+createANew = False
 generateRandom = False
 generateDistriution = False
-
 
 #function to get all file names in the folder.
 def GetFileNames(path = 'None', isVira = False):
@@ -87,7 +85,6 @@ def DataPrep (class1, class2):
 
 
 ############ MAIN ##############
-
 
 # ----- Train data (RANDOM SELECTION) -----
 if Chest_Xray:

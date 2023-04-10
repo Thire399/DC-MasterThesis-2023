@@ -325,7 +325,7 @@ if alzimers == True:
         x, y = DataPrep('Proccesed/Alzheimer_MRI/train/normalDementedDistribution.pt', 'Proccesed/Alzheimer_MRI/train/DementedDistribution.pt')
         trainX, valX, trainY, valY = train_test_split(x, y, test_size = 0.3, random_state= 1)
         torch.save(trainX, f = 'Proccesed/Alzheimer_MRI/DistributiontrainX.pt')
-        torch.save(trainY, f = 'Proccesed/Alzheimer_MRI/DistrubutiontrainY.pt')
+        torch.save(trainY, f = 'Proccesed/Alzheimer_MRI/DistributiontrainY.pt')
         torch.save(valX, f = 'Proccesed/Alzheimer_MRI/DistributionValX.pt')
         torch.save(valY, f = 'Proccesed/Alzheimer_MRI/DistributionValY.pt')
 

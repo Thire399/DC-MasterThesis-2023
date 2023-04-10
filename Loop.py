@@ -40,6 +40,7 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
     mkPathLoss = 'Data/Loss_' + dataSet
     if dev:
         print()
+#        os.makedirs(f'Data/Loss_{dataSet}/test', exist_ok = True)
         tempPath = mkPathLoss + '/test/CarbonLogs'
         os.makedirs(tempPath, exist_ok= True)
     else:
@@ -155,13 +156,12 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
     plt.grid()
     if figSave == True:
         if dev:
+            os.makedirs(mkPathLoss + '/test' +'/Figs/', exist_ok = True)
             plt.savefig(mkPathLoss + '/test' +'/Figs/'+ costumLabel + model._get_name() + now + '.png', bbox_inches='tight', dpi = 400)
         else:
             plt.savefig(mkPathLoss + '/Figs/'+ costumLabel + model._get_name() + now + '.png', bbox_inches='tight', dpi = 400)
     plt.show()
-    time.sleep(1)
     plt.close()
-
 
     return None
 
@@ -189,9 +189,9 @@ def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '
             model_filePath = np.sort(np.asarray([os.path.join('Data/Loss_' + dataset, file) for file 
                                                  in os.listdir('Data/Loss_' + dataset)
                                                    if re.search('model', file) and re.search(size+model._get_name(), file)]))[-1]  
-            print(f'no model specified.\nUsing last trained model: "{model_filePath}"')     
+            print(f'no model specified.\nUsing last trained model: "{model_filePath}"')  
         else:
-            print(f'Model specified.\nUsing trained model: "{model_filePath}"') 
+            print(f'Model specified.\nUsing trained model: "{model_filePath}"')
         model.load_state_dict(torch.load(model_filePath))
     model.to(device)
     model.eval()

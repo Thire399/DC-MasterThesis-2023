@@ -6,6 +6,7 @@ import numpy as np
 import Models as M
 import torch.nn as nn
 import torch.optim as optim
+from sklearn.metrics.pairwise import rbf_kernel
 import Data_processing as DP
 warnings.filterwarnings("ignore")
 
@@ -103,13 +104,50 @@ class GradientMatching():
 
 
 class DistributionMatching():
-    def __init__(self, model, k = 200, batchSize = 64, syntheticSampleSize = 200):
+    def __init__(self, model, k = 200, c=2,  batchSize = 64, syntheticSampleSize = 200):
         self.model = model
         self.k = k
+        self.c = c
         self.batch_size = batchSize
         S_x = torch.rand((syntheticSampleSize, 3, 64, 64))
         S_y = Gen_Y(S_x.shape[0])
         self.synthetic = torch.utils.data.TensorDataset(S_x, S_y)
+
+    def Empirical_mmd(X, Y, gamma):
+        K_xx = rbf_kernel(X, X, gamma)
+        K_xy = rbf_kernel(X, Y, gamma)
+        K_yy = rbf_kernel(Y, Y, gamma)
+        mmd = np.mean(K_xx) - 2 * np.mean(K_xy) + np.mean(K_yy)
+        return mmd
+
+    def sampleRandom(self, data, batch_size):
+        index = np.random.randint(data.shape[0], size = batch_size)
+        return torch.stack([data[i] for i in index])
+
+    def DM(self, T_x, T_y, S_x, S_y,):
+        Schange_class_index = torch.argmax(S_y).item()
+        Tchange_class_index = torch.argmax(T_y).item()
+        for k in range(self.k):
+            for c in range(self.c):
+                print('Create Mini Beatches')
+                if c == 0:
+                    T_DataX = torch.tensor(T_x[:Tchange_class_index])
+                    T_DataY = torch.tensor(T_y[:Tchange_class_index])
+                    S_DataX = torch.tensor(S_x[:Schange_class_index])
+                    S_DataY = torch.tensor(S_y[:Schange_class_index])
+                    
+                else:
+                    T_DataX = torch.tensor(T_x[Tchange_class_index:])
+                    T_DataY = torch.tensor(T_y[Tchange_class_index:])
+                    S_DataX = torch.tensor(S_x[Schange_class_index:])
+                    S_DataY = torch.tensor(S_y[Schange_class_index:])
+                print('Sampling...')
+                T_BatchX = self.sampleRandom(T_DataX, batch_size = batch_size)
+                T_BatchY = self.sampleRandom(T_DataY, batch_size = batch_size)
+                S_BatchX = self.sampleRandom(S_DataX, batch_size = batch_size)                
+                S_BatchY = self.sampleRandom(S_DataY, batch_size = batch_size)
+                old = S_BatchX
+
     
         return None
 

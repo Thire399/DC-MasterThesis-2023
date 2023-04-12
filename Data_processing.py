@@ -18,10 +18,10 @@ trainSize = 300
 imgSize = (64, 64)
 vira = False
 alzimers = False
-Chest_Xray = False
+Chest_Xray = True
 
 #Dataset to create
-createANew = False
+createANew = True
 generateRandom = False
 generateDistriution = False
 

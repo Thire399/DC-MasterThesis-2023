@@ -17,19 +17,19 @@ os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
 #model = models.alexnet(pretrained = False)
 #model.classifier[6] = nn.Linear(in_features=4096, out_features = 2, bias=True)
 
-model = models.resnet50(pretrained = False)
-model.fc = nn.Linear(in_features=2048, out_features = 2, bias=True)
+#model = models.resnet50(pretrained = False)
+#model.fc = nn.Linear(in_features=2048, out_features = 2, bias=True)
 
-#model = M.UNet(enc_chs = (3, 64, 128, 256, 512, 1024)
-#               , dec_chs = (1024, 512, 256, 128, 64)
-#               , num_class = 1
-#               , df = 16384) # binary classification = 1.
+model = M.UNet(enc_chs = (3, 64, 128, 256, 512, 1024)
+               , dec_chs = (1024, 512, 256, 128, 64)
+               , num_class = 1
+               , df = 16384) # binary classification = 1.
 
 #Data parameters
-dataSet      = 'Alzheimer_MRI'
-#dataSet      = 'chest_xray'
-datatype     = 'Distribution'
-costumLabel  = '128x128Distribution' 
+#dataSet      = 'Alzheimer_MRI'
+dataSet      = 'chest_xray'
+datatype     = ''
+costumLabel  = '128x128Full' 
 
 dev = False
 #model parameters
@@ -40,7 +40,7 @@ epochs       = 400
 learningRate = 1e-3 #add weight decay weight_decay=1e-5
 optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.9)#optim.Adam(model.parameters(), lr = learningRate)
 loss_Fun     = nn.CrossEntropyLoss()
-batch_size   = 64
+batch_size   = 32
 saveModel    = True
 figSave      = True
 ####### PARAMETERS #######

@@ -11,6 +11,7 @@ Data/Unproccesed/**
 Data/UnProccesed/**
 Data/Proccesed/chest_xray/train/**
 Data/Proccesed/chest_xray/trainX.pt
+Data/Proccesed/chest_xray/Distribution**
 /home/thire399/Documents/School/DC-MasterThesis-2023/Data/Proccesed/chest_xray/trainX.pt
 Data/Proccesed/chest_xray/val/**
 Data/Loss_**

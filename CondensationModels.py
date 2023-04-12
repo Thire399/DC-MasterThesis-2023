@@ -26,7 +26,7 @@ class GradientMatching():
         self.c   = c
         self.lr_Theta = lr_Theta
         self.lr_S = lr_S
-        self.S_x = torch.rand((syntheticSampleSize, 3, 64, 64))
+        self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 3, 64, 64)))
         self.S_y = Gen_Y(self.S_x.shape[0])
         self.loss_Fun = loss_Fun #self.loss_Fun     = nn.CrossEntropyLoss()
         #self.synthetic = torch.utils.data.TensorDataset(S_x, S_y)
@@ -69,7 +69,7 @@ class GradientMatching():
             print('init random weights...')
             self.model._init_weights() #Here?
             for t in range(self.t):
-                old = self.S_x
+                old = self.S_x.clone()
                 #if t % 2 == 0:
                 print(f'K Iteration: {k}\n\tT Iteration: {t}')
                 for c in range(self.c):
@@ -98,7 +98,8 @@ class GradientMatching():
                     print('distance ', D)
                     self.optimizerS.step()
                 self.optimizerT.step()
-#                print('any change?:', torch.sum(torch.eq(old, self.S_x)) == 2457600)
+                print('any change?:', torch.sum(torch.eq(old, self.S_x)) == 2457600)
+                print(self.S_x.requires_grad)
                 print('loss per iter', loss.item())
         return self.S_x, self.S_y
 

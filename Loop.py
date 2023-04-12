@@ -192,6 +192,7 @@ def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '
             print(f'no model specified.\nUsing last trained model: "{model_filePath}"')  
         else:
             print(f'Model specified.\nUsing trained model: "{model_filePath}"')
+            print(model_filePath)
         model.load_state_dict(torch.load(model_filePath))
     model.to(device)
     model.eval()

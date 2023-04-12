@@ -14,16 +14,17 @@ from sklearn.model_selection import train_test_split
 # TODO: update function description to standard.
 directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'
 os.chdir(directory)
-trainSize = 300
+healthy_size = 13
+unhealthy_size = 39
 imgSize = (64, 64)
 vira = False
 alzimers = False
 Chest_Xray = True
 
 #Dataset to create
-createANew = True
+createANew = False
 generateRandom = False
-generateDistriution = False
+generateDistriution = True
 
 #function to get all file names in the folder.
 def GetFileNames(path = 'None', isVira = False):
@@ -90,13 +91,13 @@ def DataPrep (class1, class2):
 if Chest_Xray:
     if generateRandom == True:
         normal = GetFileNames('UnProccesed/chest_xray/train/NORMAL', isVira= vira)
-        normalRandSelection = CS.RandomSelection(normal, k = trainSize)
+        normalRandSelection = CS.RandomSelection(normal, k = healthy_size)
         normalTensor = SaveToTensor(normalRandSelection, imgSize[0], imgSize[1])
         os.makedirs('Proccesed/chest_xray/train', exist_ok = True)
         torch.save(normalTensor, f = 'Proccesed/chest_xray/train/Randomtrainnormal.pt')
 
         pneumonia = GetFileNames('UnProccesed/chest_xray/train/PNEUMONIA')
-        pneumoniaRandSelection = CS.RandomSelection(pneumonia, k = trainSize)
+        pneumoniaRandSelection = CS.RandomSelection(pneumonia, k = unhealthy_size)
         pneumoniaTensor = SaveToTensor(pneumoniaRandSelection, imgSize[0], imgSize[1])
         os.makedirs('Proccesed/chest_xray/train', exist_ok = True) 
         torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/train/Randomtrainpneumonia.pt')
@@ -184,7 +185,7 @@ if Chest_Xray:
         kmeansNormalTensor = SaveToTensor(normal, h = 800, w = 800)
         #kmeansNormalTensor = kmenasNormalTensor.repeat(1,3,1,1) #recreates the tensor to (n, 3, 64, 64)
         normalFeatures = CS.featureExtract(kmeansNormalTensor)
-        normalDistribution = CS.getKNearest(normalFeatures, normal, 600)
+        normalDistribution = CS.getKNearest(normalFeatures, normal, healthy_size)
         del kmeansNormalTensor
         del normalFeatures
         gc.collect()
@@ -202,7 +203,7 @@ if Chest_Xray:
         pneumoniaFeatures = CS.featureExtract(kmeansPneumoniaTensor)
         del kmeansPneumoniaTensor
         gc.collect()
-        pneumoniaDistribution = CS.getKNearest(pneumoniaFeatures, pneumonia, 600)
+        pneumoniaDistribution = CS.getKNearest(pneumoniaFeatures, pneumonia, unhealthy_size)
         pneumoniaTensor = SaveToTensor(pneumoniaDistribution, imgSize[0], imgSize[1])
         torch.save(pneumoniaTensor , f = 'Proccesed/chest_xray/train/pneumoniaDistribution.pt')
         del pneumoniaTensor
@@ -259,7 +260,7 @@ if alzimers == True:
         os.makedirs('Proccesed/Alzheimer_MRI/train', exist_ok = True)
         print('Getting healty images...')
         normal = GetFileNames('UnProccesed/Alzheimer_MRI/Non_Demented')
-        normalRandSelection = CS.RandomSelection(normal, k = trainSize, seed = 1)
+        normalRandSelection = CS.RandomSelection(normal, k = healthy_size, seed = 1)
         normalTensor = SaveToTensor(normalRandSelection, reshape = False)
         torch.save(normalTensor, f = 'Proccesed/Alzheimer_MRI/train/RandomTrainNormal.pt')
         print('Getting Sick images...')
@@ -267,7 +268,7 @@ if alzimers == True:
         Mild = GetFileNames('UnProccesed/Alzheimer_MRI/Mild_Demented')
         VeryMild = GetFileNames('UnProccesed/Alzheimer_MRI/Very_Mild_Demented')
         Demented = Moderate + Mild + VeryMild
-        DementedRandSelection = CS.RandomSelection(Demented, k = trainSize, seed = 1)
+        DementedRandSelection = CS.RandomSelection(Demented, k = unhealthy_size, seed = 1)
         DementedTensor = SaveToTensor(DementedRandSelection, reshape = False)
         
         torch.save(DementedTensor, f = 'Proccesed/Alzheimer_MRI/train/trainRandomDemented.pt')
@@ -291,7 +292,7 @@ if alzimers == True:
         normal = GetFileNames('UnProccesed/Alzheimer_MRI/Non_Demented')
         kmeansNormalTensor = SaveToTensor(normal, reshape = False)
         normalFeatures = CS.featureExtract(kmeansNormalTensor)
-        normalDistribution = CS.getKNearest(normalFeatures, normal, 600)
+        normalDistribution = CS.getKNearest(normalFeatures, normal, healthy_size)
         del kmeansNormalTensor
         del normalFeatures
         gc.collect()
@@ -312,7 +313,7 @@ if alzimers == True:
         DementedFeatures = CS.featureExtract(kmeansDementedTensor)
         del kmeansDementedTensor
         gc.collect()
-        DementedDistribution = CS.getKNearest(DementedFeatures, Demented, 600)
+        DementedDistribution = CS.getKNearest(DementedFeatures, Demented, unhealthy_size)
         DementedTensor = SaveToTensor(DementedDistribution, reshape = False)
         torch.save(DementedTensor , f = 'Proccesed/Alzheimer_MRI/train/DementedDistribution.pt')
         del DementedTensor

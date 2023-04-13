@@ -13,7 +13,7 @@ logs = parser.parse_all_logs(log_dir = 'Data/Loss_' + dataSet + '/CarbonLogs')
 var_names = []  # Declare empty list to store var_names
 
 for log in logs:
-    var_name = ((log['output_filename']).split("64x64")[1]).split("_")[0]
+    var_name = ((log['output_filename']).split("CarbonLogs/")[1]).split("_")[0]
     var_names.append(var_name)
     output_file = log['output_filename']
     standard_file = log['standard_filename']
@@ -99,7 +99,7 @@ class ComplexRadar():
 #grouping data
 groups = {}
 for var_name in var_names:
-    prefix = var_name[:4]
+    prefix = var_name[:9]
     if prefix not in groups:
         groups[prefix] = []
     groups[prefix].append(var_name)

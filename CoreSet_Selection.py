@@ -6,18 +6,19 @@ from sklearn.cluster import KMeans
 import torch.nn.functional as F
 import gc
 
-def RandomSelection(fileNames = None, k = 200, seed = 1):
+def RandomSelection(tensorX, tensorY, k = 200, seed = 1):
     '''
     Selects k random filenames. Default 200.
     '''
-    try:
-        rand.seed(seed)
-        return rand.choices(fileNames, k = k)
-    except:
-        print('Random selection: Failed')
+    #try:
+    torch.random.manual_seed(seed)
+    indices = torch.randperm(tensorX.shape[0])[:k]
+    return tensorX[indices], tensorY[indices]
+    #except:
+    #    print('Random selection: Failed')
 
 # loop for feature extraction
-def featureExtract(train_set):
+def featureExtract(train_set: torch.Tensor):
     temp_list = []
 
     model = M.resnet(output_layer = 'layer4')
@@ -62,7 +63,8 @@ def getKNearest(features, dataset, k = 200, chunk = 50):
                 i+1, len(features)))
     temp = np.asarray(temp)
     j = np.argsort(temp)
-    out = [dataset[i] for i in j[:k]]
+    indices = j[:k]
+    out = dataset[indices]
     return out
 
 #TODO: implement k-means either from sklearn, for kmeans coreset selection.

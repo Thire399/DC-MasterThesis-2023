@@ -92,7 +92,7 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
         #Train Data
         for batch, (data, target) in enumerate(train_Loader, 1):
             optimizer.zero_grad() # a clean up step for PyTorch
-            out = model(data.to(device))
+            out = model(data.type(torch.float32).to(device))
             loss = loss_Fun(out, (target).type(torch.LongTensor).to(device))
             loss.backward()
             optimizer.step()
@@ -109,7 +109,7 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
         model.eval()
         for batch, (data, target) in enumerate(val_Loader, 1):
             optimizer.zero_grad() # a clean up step for PyTorch
-            out = model(data.to(device))
+            out = model(data.type(torch.float32).to(device))
             loss = loss_Fun(out, (target).type(torch.LongTensor).to(device))
             batchVal_loss.append(loss.item())
             if batch % 2 == 0: #For printing
@@ -192,12 +192,11 @@ def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '
             print(f'no model specified.\nUsing last trained model: "{model_filePath}"')  
         else:
             print(f'Model specified.\nUsing trained model: "{model_filePath}"')
-            print(model_filePath)
         model.load_state_dict(torch.load(model_filePath))
     model.to(device)
     model.eval()
     for batch, (data, target) in enumerate(val_Loader, 1):
-        out = model(data.to(device))
+        out = model(data.type(torch.float32).to(device))
         for p in out.detach().cpu().numpy():
             prediction.append(np.argmax(p))
         for t in target.detach().cpu().numpy():

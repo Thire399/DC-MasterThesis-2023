@@ -68,7 +68,7 @@ class UNet(nn.Module):
         self.sig         = nn.Sigmoid() #clamps the output to between 1 and 0
                 #clamps output between 1 and 0. differently from the sigmoid
         self.fc1 = nn.Linear(df, 64)
-        self.fc2 = nn.Linear(64, 2)
+        self.fc2 = nn.Linear(64, num_class)
         self.num_class   = num_class #think of it as the number of objects to segment
 
     def forward(self, x):

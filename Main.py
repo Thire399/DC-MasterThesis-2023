@@ -15,11 +15,11 @@ os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
 ####### PARAMETERS #######
 
 #model = models.alexnet(pretrained = False)
-#model.classifier[6] = nn.Linear(in_features=4096, out_features = 2, bias=True)
+#model.classifier[6] = nn.Linear(in_features=4096, out_features = 1, bias=True)
 
-model = models.resnet50(pretrained = False)
-model.fc = nn.Linear(in_features=2048, out_features = 2, bias=True)
-
+model = models.resnet18(pretrained = False)
+model.fc = nn.Linear(in_features = 512, out_features = 1, bias=True)
+#model.fc.add_module('Sigmoid', nn.Sigmoid())
 #model = M.UNet(enc_chs = (3, 64, 128, 256, 512, 1024)
 #               , dec_chs = (1024, 512, 256, 128, 64)
 #               , num_class = 1
@@ -28,19 +28,22 @@ model.fc = nn.Linear(in_features=2048, out_features = 2, bias=True)
 #Data parameters
 #dataSet      = 'Alzheimer_MRI'
 dataSet      = 'chest_xray'
-datatype     = '1PercentDistribution'
-costumLabel  = '64x641PercentDistribution'
+datatype     = 'TestRandom'
+#'10PercentDistribution'
+costumLabel  = '64x64TestRandom'#
+#costumLabel = '64x6410PercentDistribution'
 
-dev = True
+dev = False
 #model parameters
 patience     = 10 #
 delta        = 1e-5
 epochs       = 400
 
-learningRate = 1e-4 #add weight decay weight_decay=1e-5
-optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.9)#optim.Adam(model.parameters(), lr = learningRate)
-loss_Fun     = nn.CrossEntropyLoss()
-batch_size   = 32
+learningRate = 1e-4
+optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.5)
+#optimizer    =  optim.Adam(model.parameters(), lr = learningRate)
+loss_Fun     = nn.BCEWithLogitsLoss()
+batch_size   = 64
 saveModel    = True
 figSave      = True
 ####### PARAMETERS #######
@@ -88,14 +91,14 @@ def __main__():
                 , dev = dev
                 )
         if saveModel:
-                p, t, fscore = Loop.eval_model(model = model
+                fscore = Loop.eval_model(model = model
                                 , dataset = dataSet
                                 , dev = dev
                                 , val_Loader = val_Loader
                                 , size = costumLabel)
-                
+            #print('Accuracy on temp ValidationSet: {0}     --> (sum(Prediction = Target))/n_sampels'.format(np.sum([p == t])/t.shape[0]))        
 
-        print('Accuracy on temp ValidationSet: {0}     --> (sum(Prediction = Target))/n_sampels'.format(np.sum([p == t])/t.shape[0]))
+        
         if dev:
             parser.print_aggregate(log_dir= 'Data/Loss_' + dataSet + '/test/CarbonLogs') 
         else:

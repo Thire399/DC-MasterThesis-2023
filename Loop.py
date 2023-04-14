@@ -12,7 +12,7 @@ from torchvision import models
 from carbontracker.tracker import CarbonTracker
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import precision_recall_curve
-#from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score
 
 # Maybe move to another file?
 def PRAUC(pred, Target, ep):
@@ -93,7 +93,9 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
         for batch, (data, target) in enumerate(train_Loader, 1):
             optimizer.zero_grad() # a clean up step for PyTorch
             out = model(data.type(torch.float32).to(device))
-            loss = loss_Fun(out, (target).type(torch.LongTensor).to(device))
+            out = out.flatten()
+            #out = out.clamp(min = 0)
+            loss = loss_Fun(out, (target).type(torch.float).to(device))
             loss.backward()
             optimizer.step()
             batchTrain_loss.append(loss.item())
@@ -104,13 +106,14 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
                     np.mean(batchTrain_loss)))
         train_Loss.append(np.mean(batchTrain_loss))
         time.sleep(2)
-
         # Val Data.
         model.eval()
         for batch, (data, target) in enumerate(val_Loader, 1):
             optimizer.zero_grad() # a clean up step for PyTorch
-            out = model(data.type(torch.float32).to(device))
-            loss = loss_Fun(out, (target).type(torch.LongTensor).to(device))
+            out = model(data.type(torch.float32).to(device)).flatten()
+            out = out.flatten()
+            #out = out.clamp(min = 0)
+            loss = loss_Fun(out, (target).type(torch.float).to(device))
             batchVal_loss.append(loss.item())
             if batch % 2 == 0: #For printing
                 print(4*' ', '===> Validation: [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -193,23 +196,30 @@ def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '
         else:
             print(f'Model specified.\nUsing trained model: "{model_filePath}"')
         model.load_state_dict(torch.load(model_filePath))
+    print(model_filePath)
     model.to(device)
     model.eval()
     for batch, (data, target) in enumerate(val_Loader, 1):
         out = model(data.type(torch.float32).to(device))
+        #out = nn.Softmax()(out)
+        #for each batch get each prediction out + the target.
         for p in out.detach().cpu().numpy():
             prediction.append(np.argmax(p))
         for t in target.detach().cpu().numpy():
             targetList.append(t)
-        if batch % 2 == 0: #For printing
+        if batch % 8 == 0: #For printing
             print(4*' ', '===> F-Score: [{}/{} ({:.0f}%)]\t'.format(
                 batch * len(data), len(val_Loader.dataset),
                 100. * batch / len(val_Loader)))
+#    print(f'Target    : {targetList}\nPrediction: {prediction}')
     targetList = np.array(targetList).flatten()
-    Precision, Recall, Threshold, Fscore = PRAUC(prediction, targetList, ep = 1e-5)
-    print('Precision: {0}\nRecall: {1}\nThreshold: {2} (not used)'.format(Precision, Recall, Threshold))
-    #print('Testing f1 score:{0}'.format(f1_score(targetList, prediction, average = 'binary')))
-    return prediction, targetList, Fscore
+    #Precision, Recall, Threshold, Fscore = PRAUC(prediction, targetList, ep = 1e-5)
+    #print('Precision: {0}\nRecall: {1}\nThreshold: {2} (not used)'.format(Precision, Recall, Threshold))
+
+    fscore = f1_score(targetList, prediction, average = 'binary')
+    print('Testing f1 score:{0}'.format(fscore))
+
+    return fscore
 
 
 ####### Main Calls ########

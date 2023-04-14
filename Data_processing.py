@@ -16,13 +16,13 @@ import random
 # TODO: update function description to standard.
 directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'
 os.chdir(directory)
-healthy_size = 94
-unhealthy_size = 272
-imgSize = (128, 128)
+healthy_size = 400
+unhealthy_size = 400
+imgSize = (64, 64)
 vira = False
 alzimers = False
 Chest_Xray = True
-customLabel = '10Percent'
+customLabel = 'Test'
 #Dataset to create
 make_new_split = True
 generateRandom = False
@@ -166,15 +166,27 @@ if Chest_Xray:
 
     if generateRandom == True:
         print('Generating random...')
-        X = torch.load('Proccesed/chest_xray/trainX.pt')
-        Y = torch.load('Proccesed/chest_xray/trainY.pt')
-        RandX, RandY = CS.RandomSelection(X, Y, k = healthy_size)
+        X = torch.load('Proccesed/chest_xray/train/Splitnormal.pt')
+        X = ReadFromTensor(X, imgSize[0], imgSize[1], readfromFile= False)
+        #Y = torch.load('Proccesed/chest_xray/trainY.pt')
+        Y = torch.from_numpy(np.asarray([0]*X.shape[0]))
+        NormalRandX, NormalRandY = CS.RandomSelection(X, Y, k = healthy_size)
+        #Unhealthy
+        X = torch.load('Proccesed/chest_xray/train/Splitpneumonia.pt')
+        X = ReadFromTensor(X, imgSize[0], imgSize[1], readfromFile= False)
+        #Y = torch.load('Proccesed/chest_xray/trainY.pt')
+        Y = torch.from_numpy(np.asarray([1]*X.shape[0]))
+        pneumoniaRandX, pneumoniaRandY = CS.RandomSelection(X, Y, k = unhealthy_size)
+        RandX = torch.cat((NormalRandX, pneumoniaRandX))
+        RandY = torch.cat((NormalRandY, pneumoniaRandY))
         torch.save(RandX, f'Proccesed/chest_xray/{customLabel}RandomtrainX.pt')
         torch.save(RandY, f'Proccesed/chest_xray/{customLabel}RandomtrainY.pt')
+        del pneumoniaRandX
+        del pneumoniaRandY
+        del NormalRandX
+        del NormalRandY
         del X
         del Y
-        del RandX
-        del RandY
         gc.collect()
         if (os.path.isfile('Proccesed/chest_xray/valX.pt') == False) and (os.path.isfile('Proccesed/chest_xray/valY.pt') == False):
             print('Generating Original Validation set...')

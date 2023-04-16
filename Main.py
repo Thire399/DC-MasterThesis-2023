@@ -17,8 +17,8 @@ os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
 #model = models.alexnet(pretrained = False)
 #model.classifier[6] = nn.Linear(in_features=4096, out_features = 1, bias=True)
 
-model = models.resnet18(pretrained = False)
-model.fc = nn.Linear(in_features = 512, out_features = 1, bias=True)
+model = models.resnet50(pretrained = False)
+model.fc = nn.Linear(in_features = 2048, out_features = 1, bias=True)
 #model.fc.add_module('Sigmoid', nn.Sigmoid())
 #model = M.UNet(enc_chs = (3, 64, 128, 256, 512, 1024)
 #               , dec_chs = (1024, 512, 256, 128, 64)
@@ -26,24 +26,24 @@ model.fc = nn.Linear(in_features = 512, out_features = 1, bias=True)
 #               , df = 16384) # binary classification = 1.
 
 #Data parameters
-#dataSet      = 'Alzheimer_MRI'
-dataSet      = 'chest_xray'
-datatype     = 'TestRandom'
+dataSet      = 'Alzheimer_MRI'
+#dataSet      = 'chest_xray'
+datatype     = ''
 #'10PercentDistribution'
-costumLabel  = '64x64TestRandom'#
+costumLabel  = '128z128 Full'#
 #costumLabel = '64x6410PercentDistribution'
 
 dev = False
 #model parameters
 patience     = 10 #
-delta        = 1e-5
+delta        = 1e-4
 epochs       = 400
 
-learningRate = 1e-4
+learningRate = 1e-3
 optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.5)
 #optimizer    =  optim.Adam(model.parameters(), lr = learningRate)
 loss_Fun     = nn.BCEWithLogitsLoss()
-batch_size   = 64
+batch_size   = 32
 saveModel    = True
 figSave      = True
 ####### PARAMETERS #######
@@ -62,7 +62,6 @@ def __main__():
             yVal = torch.load('Data/Proccesed/'+ dataSet + '/ValY.pt')
         xTrain = xTrain.repeat(1, 3, 1, 1) # only for pretrained model
         xVal = xVal.repeat(1, 3, 1, 1)     # only for pretrained model
-
         train_Set = torch.utils.data.TensorDataset(xTrain, yTrain)
         train_Loader = torch.utils.data.DataLoader(train_Set,
                                                 batch_size = batch_size,
@@ -91,7 +90,7 @@ def __main__():
                 , dev = dev
                 )
         if saveModel:
-                fscore = Loop.eval_model(model = model
+                fscore, pred, _ = Loop.eval_model(model = model
                                 , dataset = dataSet
                                 , dev = dev
                                 , val_Loader = val_Loader

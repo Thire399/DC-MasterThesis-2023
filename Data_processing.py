@@ -25,8 +25,9 @@ Chest_Xray = True
 customLabel = 'Test'
 #Dataset to create
 make_new_split = True
-generateRandom = False
+generateRandom = True
 generateDistriution = False
+Val = True
 os.makedirs('Proccesed/chest_xray/train', exist_ok = True)
 #function to get all file names in the folder.
 def GetFileNames(path = 'None', isVira = False):
@@ -149,7 +150,7 @@ if Chest_Xray:
         torch.save(x, f = 'Proccesed/chest_xray/tempValX.pt')
         torch.save(y, f = 'Proccesed/chest_xray/tempValY.pt')
         print('Created a new data split.')
-        if (os.path.isfile('Proccesed/chest_xray/valX.pt') == False) and (os.path.isfile('Proccesed/chest_xray/valY.pt') == False):
+        if (os.path.isfile('Proccesed/chest_xray/valX.pt') == False) and (os.path.isfile('Proccesed/chest_xray/valY.pt') == False) or Val:
             print('Generating Original Validation set...')
             normal = GetFileNames('UnProccesed/chest_xray/val/NORMAL')
             normalTensor = SaveToTensor(normal, imgSize[0], imgSize[1])
@@ -263,7 +264,7 @@ if Chest_Xray:
 
 if alzimers == True:
     
-    if ((os.path.isfile('Proccesed/Alzheimer_MRI/trainX.pt') == False) and (os.path.isfile('Proccesed/Alzheimer_MRI/trainY.pt') == False)) or createANew == True:
+    if ((os.path.isfile('Proccesed/Alzheimer_MRI/trainX.pt') == False) and (os.path.isfile('Proccesed/Alzheimer_MRI/trainY.pt') == False)):
         print('Creating Full data set...')
         os.makedirs('Proccesed/Alzheimer_MRI/train', exist_ok = True)
         print('Getting healty images...')
@@ -361,5 +362,5 @@ if alzimers == True:
         torch.save(valY, f = 'Proccesed/Alzheimer_MRI/DistributionValY.pt')
 
         print('Done. -> Proccesed/Alzheimer_MRI/')
-    if createANew == False and generateRandom == False and generateDistriution == False:
+    if generateRandom == False and generateDistriution == False:
         print('No Version Choosen -> Nothing made')

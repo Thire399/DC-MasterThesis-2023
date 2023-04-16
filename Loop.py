@@ -31,8 +31,8 @@ def PRAUC(pred, Target, ep):
     ix = np.argmax(fscore)
     bestT = T[ix]
     print('Best Threshold=%f, F-Score=%.3f' % (T[ix], fscore[ix]))
-
-    return P[ix], R[ix], bestT, fscore
+    Prediction = [int(round(x[0])) if x[0] >= bestT else 0 for x in pred]
+    return P[ix], R[ix], Prediction, fscore, bestT
 
 def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimizer, loss_Fun, modelSave, figSave, dataSet, costumLabel, dev = False):
     
@@ -80,7 +80,7 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
     batchTrain_loss = []
     batchVal_loss   = []
     #### -- Set up -- ####
-
+    torch.autograd.detect_anomaly()
     #### -- Main loop -- ####
     model.to(device)
     for epoch in range(epochs):
@@ -94,18 +94,19 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
             optimizer.zero_grad() # a clean up step for PyTorch
             out = model(data.type(torch.float32).to(device))
             out = out.flatten()
-            #out = out.clamp(min = 0)
-            loss = loss_Fun(out, (target).type(torch.float).to(device))
+            loss = loss_Fun(out, (target).type(torch.float32).to(device))
+            
             loss.backward()
             optimizer.step()
             batchTrain_loss.append(loss.item())
-            if batch % 2 == 0:
+            if batch % 8 == 0:
                 print('Train Epoch [{}/{}]: [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch+1, epochs, batch * len(data), len(train_Loader.dataset),
                     100. * batch / len(train_Loader),
                     np.mean(batchTrain_loss)))
+            
         train_Loss.append(np.mean(batchTrain_loss))
-        time.sleep(2)
+        #time.sleep(2) #used when loop too fast for carbon trackerf
         # Val Data.
         model.eval()
         for batch, (data, target) in enumerate(val_Loader, 1):
@@ -115,7 +116,7 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
             #out = out.clamp(min = 0)
             loss = loss_Fun(out, (target).type(torch.float).to(device))
             batchVal_loss.append(loss.item())
-            if batch % 2 == 0: #For printing
+            if batch % 8 == 0: #For printing
                 print(4*' ', '===> Validation: [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     batch * len(data), len(val_Loader.dataset),
                     100. * batch / len(val_Loader),
@@ -126,13 +127,14 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
         val_Loss.append(temp_ValLoss)
 
         early_stopping(temp_ValLoss, model)
-
+        
         if early_stopping.early_stop:
             print("Early stopping")
             tracker.stop()
             break
         else:
             continue
+        
     if not early_stopping.early_stop:
         tracker.stop()
     #### -- Save info -- ####
@@ -168,10 +170,10 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
 
     return None
 
-def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '64x64'):
+def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '64x64', threshold = None):
     torch.cuda.empty_cache()
         #new trying something with PRAUC
-    prediction = []
+    predictionList = []
     targetList = []
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print('Using: ', device)
@@ -201,25 +203,30 @@ def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '
     model.eval()
     for batch, (data, target) in enumerate(val_Loader, 1):
         out = model(data.type(torch.float32).to(device))
-        #out = nn.Softmax()(out)
+        out = nn.Sigmoid()(out) #using sigmoid to go from logits to probabilities.
         #for each batch get each prediction out + the target.
         for p in out.detach().cpu().numpy():
-            prediction.append(np.argmax(p))
+            predictionList.append(p) #np.argmax(p))
         for t in target.detach().cpu().numpy():
             targetList.append(t)
         if batch % 8 == 0: #For printing
             print(4*' ', '===> F-Score: [{}/{} ({:.0f}%)]\t'.format(
                 batch * len(data), len(val_Loader.dataset),
                 100. * batch / len(val_Loader)))
-#    print(f'Target    : {targetList}\nPrediction: {prediction}')
+    #for i in range(len(targetList)):
+    #    print(f'Target    : {np.array(targetList).flatten()[i]} Prediction: {predictionList[i]}')
+    
+
     targetList = np.array(targetList).flatten()
-    #Precision, Recall, Threshold, Fscore = PRAUC(prediction, targetList, ep = 1e-5)
-    #print('Precision: {0}\nRecall: {1}\nThreshold: {2} (not used)'.format(Precision, Recall, Threshold))
-
-    fscore = f1_score(targetList, prediction, average = 'binary')
-    print('Testing f1 score:{0}'.format(fscore))
-
-    return fscore
+    if threshold == None:
+        Precision, Recall, Prediction, fscore, threshold = PRAUC(predictionList, targetList, ep = 1e-5)
+        print('Precision: {0}\nRecall: {1}'.format(Precision, Recall))
+    else:
+        print(threshold)
+        Prediction = [int(round(x[0])) if x[0] >= threshold else 0 for x in predictionList]
+        fscore = f1_score(targetList, Prediction, average = 'binary')
+        print('F1 score:{0}'.format(fscore))
+    return fscore, Prediction, threshold#, predictionList
 
 
 ####### Main Calls ########

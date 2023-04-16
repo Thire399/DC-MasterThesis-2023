@@ -46,6 +46,8 @@ class GradientMatching():
         return torch.stack([data[i] for i in index])
 
     def GetGradient(self, x, y):
+        self.optimizerS.zero_grad()
+        self.optimizerT.zero_grad()
         self.model.train()
         out = self.model(x)
         loss = self.loss_Fun(out, y)

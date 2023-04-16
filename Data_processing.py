@@ -17,12 +17,12 @@ directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'
 os.chdir(directory)
 healthy_size = 400
 unhealthy_size = 400
-SampleRatio = 0.001 # procentage of the dataset.
+SampleRatio = 0.3 # procentage of the dataset.
 imgSize = (64, 64)
 vira = False
 alzimers = True
 Chest_Xray = False
-customLabel = '01Percent'
+customLabel = '30Percent'
 #Dataset to create
 make_new_split = False
 generateRandom = True

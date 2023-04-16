@@ -14,6 +14,9 @@ os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
 
 ####### PARAMETERS #######
 
+#model = models.densenet169(pretrained = False)
+#model.classifier = nn.Linear(in_features=1664, out_features = 1, bias=True)
+
 #model = models.alexnet(pretrained = False)
 #model.classifier[6] = nn.Linear(in_features=4096, out_features = 1, bias=True)
 #model = models.efficientnet_v2_s(pretrained = False)
@@ -33,9 +36,9 @@ model.fc = nn.Linear(in_features = 2048, out_features = 1, bias = True)
 #Data parameters
 dataSet      = 'Alzheimer_MRI'
 #dataSet      = 'chest_xray'
-datatype     = ''
+datatype     = '30PercentDistribution'
 #'10PercentDistribution'
-costumLabel  = '128x128Full'#
+costumLabel  = '128x128-30PercentDistribution'#
 #costumLabel = '64x6410PercentDistribution'
 
 dev = False

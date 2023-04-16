@@ -1,6 +1,5 @@
 ''' Data processing file '''
 import numpy as np
-import matplotlib.pyplot as plt
 import os 
 import shutil
 import torch
@@ -18,6 +17,7 @@ directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'
 os.chdir(directory)
 healthy_size = 400
 unhealthy_size = 400
+SampleRatio = 0.10 # procentage of the dataset.
 imgSize = (64, 64)
 vira = False
 alzimers = False
@@ -79,14 +79,14 @@ def ReadFromTensor(pathToTensor, h, w, readfromFile = True):
     for i in range(input.shape[0]):
         if i % 50 == 0:
             print(f'(resize) iteration {i}/{input.shape[0]}')
-        pil_image = T.ToPILImage()(input[i])
-        newImg = np.array(pil_image.resize((h, w)))
+            pil_image = T.ToPILImage()(input[i])
+            newImg = np.array(pil_image.resize((h, w)))
         imgList.append(torch.unsqueeze(torch.from_numpy(newImg), 0))
     return torch.stack(imgList)
 
-def split(listOfPaths, splitsize: float = 0.7):
-    k = int(np.rint(len(listOfPaths)*splitsize))
-    print(f'listofPaths size: {len(listOfPaths)}\n splitsize {splitsize}\nnp.rint size: {np.rint(len(listOfPaths)*splitsize)}\nk: {k} ')
+def split(listOfPaths, TrainingSampleSize: float = 0.7):
+    k = int(np.rint(len(listOfPaths)*TrainingSampleSize))
+    print(f'listofPaths size: {len(listOfPaths)}\n splitsize {TrainingSampleSize}\nnp.rint size: {np.rint(len(listOfPaths)*TrainingSampleSize)}\nk: {k} ')
     print('plit size (choosen)', k)
     choosen = random.sample(listOfPaths, k = k, )
     rest = [elem for elem in listOfPaths if elem not in choosen]
@@ -269,52 +269,68 @@ if alzimers == True:
         os.makedirs('Proccesed/Alzheimer_MRI/train', exist_ok = True)
         print('Getting healty images...')
         normal = GetFileNames('UnProccesed/Alzheimer_MRI/Non_Demented')
-        normalTensor = SaveToTensor(normal, reshape = False)
-        torch.save(normalTensor, f = 'Proccesed/Alzheimer_MRI/train/trainnormal.pt')
+        newNormal, testNormal = split(normal, TrainingSampleSize = 0.9)
+        newNormal, valNormal = split(newNormal)
+        normalTensor = SaveToTensor(newNormal, reshape = False)
+        valnormalTensor = SaveToTensor(valNormal, reshape = False)
+        testnormalTensor = SaveToTensor(testNormal, reshape = False)
+        torch.save(normalTensor, f = 'Proccesed/Alzheimer_MRI/train/SplitTrainnormal.pt')
+        torch.save(valnormalTensor, f = 'Proccesed/Alzheimer_MRI/train/SplitValnormal.pt')
+        torch.save(testnormalTensor, f = 'Proccesed/Alzheimer_MRI/train/SplitTestnormal.pt')
+        del normal # clean up step
+        del newNormal
+        del normalTensor
+        del valNormalTensor
+        del testnormalTensor
+        gc.collect()
         print('Getting Sick images...')
         Moderate = GetFileNames('UnProccesed/Alzheimer_MRI/Moderate_Demented')
         Mild = GetFileNames('UnProccesed/Alzheimer_MRI/Mild_Demented')
         VeryMild = GetFileNames('UnProccesed/Alzheimer_MRI/Very_Mild_Demented')
         Demented = Moderate + Mild + VeryMild
-        DementedTensor = SaveToTensor(Demented, reshape = False)
-        torch.save(DementedTensor, f = 'Proccesed/Alzheimer_MRI/train/trainDemented.pt')
+        newDemented, testDemented = split(Demented, TrainingSampleSize = 0.9)
+        newDemented, valDemented = split(newDemented)
+        DementedTensor = SaveToTensor(newDemented, reshape = False)
+        valDementedTensor = SaveToTensor(valDemented, reshape = False)
+        testDementedTensor = SaveToTensor(testDemented, reshape = False)
+        torch.save(DementedTensor, f = 'Proccesed/Alzheimer_MRI/train/SplitTrainDemented.pt')
+        torch.save(valDementedTensor, f = 'Proccesed/Alzheimer_MRI/train/SplitValDemented.pt')
+        torch.save(testDementedTensor, f = 'Proccesed/Alzheimer_MRI/train/SplitTestDemented.pt')
+        del normal # clean up step
+        del newNormal
+        del normalTensor
+        del valNormalTensor
+        del testnormalTensor
+        gc.collect()
         print('Saving Tensors to: "Proccesed/Alzheimer_MRI/"')
-        x, y = DataPrep('Proccesed/Alzheimer_MRI/train/trainnormal.pt', 'Proccesed/Alzheimer_MRI/train/trainDemented.pt')
-        trainX, testX, trainY, testY = train_test_split(x, y, test_size = 0.1, random_state= 1)
-        trainX, valX, trainY, valY = train_test_split(trainX, trainY, test_size = 0.3, random_state= 1)
-        torch.save(trainX, f = 'Proccesed/Alzheimer_MRI/trainX.pt')
-        torch.save(trainY, f = 'Proccesed/Alzheimer_MRI/trainY.pt')
-        torch.save(valX, f = 'Proccesed/Alzheimer_MRI/ValX.pt')
-        torch.save(valY, f = 'Proccesed/Alzheimer_MRI/ValY.pt')
-        torch.save(testX, f = 'Proccesed/Alzheimer_MRI/testX.pt')
-        torch.save(testY, f = 'Proccesed/Alzheimer_MRI/testY.pt')
+        x, y = DataPrep('Proccesed/Alzheimer_MRI/train/SplitTrainnormal.pt', 'Proccesed/Alzheimer_MRI/train/SplitTrainDemented.pt')
+        torch.save(x, f = 'Proccesed/Alzheimer_MRI/trainX.pt')
+        torch.save(y, f = 'Proccesed/Alzheimer_MRI/trainY.pt')
+
+        x, y = DataPrep('Proccesed/Alzheimer_MRI/train/SplitValnormal.pt', 'Proccesed/Alzheimer_MRI/train/SplitValDemented.pt')
+        torch.save(x, f = 'Proccesed/Alzheimer_MRI/ValX.pt')
+        torch.save(y, f = 'Proccesed/Alzheimer_MRI/ValY.pt')
+
+        x, y = DataPrep('Proccesed/Alzheimer_MRI/train/SplitTestnormal.pt', 'Proccesed/Alzheimer_MRI/train/SplitTestDemented.pt')
+        torch.save(x, f = 'Proccesed/Alzheimer_MRI/testX.pt')
+        torch.save(y, f = 'Proccesed/Alzheimer_MRI/testY.pt')
         print('Made full dataset')
+
     if generateRandom == True:
         print('Creating Random data set...')
         os.makedirs('Proccesed/Alzheimer_MRI/train', exist_ok = True)
         print('Getting healty images...')
-        normal = GetFileNames('UnProccesed/Alzheimer_MRI/Non_Demented')
-        normalRandSelection = CS.RandomSelection(normal, k = healthy_size, seed = 1)
-        normalTensor = SaveToTensor(normalRandSelection, reshape = False)
-        torch.save(normalTensor, f = 'Proccesed/Alzheimer_MRI/train/RandomTrainNormal.pt')
-        print('Getting Sick images...')
-        Moderate = GetFileNames('UnProccesed/Alzheimer_MRI/Moderate_Demented')
-        Mild = GetFileNames('UnProccesed/Alzheimer_MRI/Mild_Demented')
-        VeryMild = GetFileNames('UnProccesed/Alzheimer_MRI/Very_Mild_Demented')
-        Demented = Moderate + Mild + VeryMild
-        DementedRandSelection = CS.RandomSelection(Demented, k = unhealthy_size, seed = 1)
-        DementedTensor = SaveToTensor(DementedRandSelection, reshape = False)
-        
-        torch.save(DementedTensor, f = 'Proccesed/Alzheimer_MRI/train/trainRandomDemented.pt')
-
-        x, y = DataPrep('Proccesed/Alzheimer_MRI/train/RandomTrainNormal.pt', 'Proccesed/Alzheimer_MRI/train/trainRandomDemented.pt')
-        trainX, valX, trainY, valY = train_test_split(x, y, test_size = 0.3, random_state= 1)
-        print('Saving Tensors to: "Proccesed/Alzheimer_MRI/"')
-        torch.save(trainX, f = 'Proccesed/Alzheimer_MRI/RandomtrainX.pt')
-        torch.save(trainY, f = 'Proccesed/Alzheimer_MRI/RandomtrainY.pt')
-        torch.save(valX, f = 'Proccesed/Alzheimer_MRI/RandomValX.pt')
-        torch.save(valY, f = 'Proccesed/Alzheimer_MRI/RandomValY.pt')
-        print('Made Random selection dataset')
+        NormalX = torch.load('Proccesed/Alzheimer_MRI/train/SplitTrainnormal.pt')
+        NormalY = torch.from_numpy(np.asarray([0]*NormalX.shape[0]))
+        NormalRandX, NormalRandY = CS.RandomSelection(NormalX, NormalY, k = int(np.rint(NormalX.shape[0] * SampleRatio)))
+        #torch.save(NormalRandX, f = 'Proccesed/Alzheimer_MRI/train/RandomTrainNormal.pt')
+        DementedX = torch.load('Proccesed/Alzheimer_MRI/train/SplitTrainDemented.pt')
+        DementedY = torch.from_numpy(np.asarray([0]*DementedX.shape[0]))
+        DementedRandX, DementedRandY = CS.RandomSelection(DementedX, DementedY, k = int(np.rint(DementedX.shape[0] * SampleRatio)))        
+        RandX = torch.cat((NormalRandX, DementedRandX))
+        RandY = torch.cat((NormalRandY, DementedRandY))
+        torch.save(RandX, f = 'Proccesed/Alzheimer_MRI/RandomtrainX.pt')
+        torch.save(RandY, f = 'Proccesed/Alzheimer_MRI/RandomtrainY.pt')
 
     if generateDistriution:
         print('\n\nStarting coreset selection distribution.')
@@ -323,44 +339,27 @@ if alzimers == True:
         print('Creating Random data set...')
         os.makedirs('Proccesed/Alzheimer_MRI/train', exist_ok = True)
         print('Getting healty images...')
-        normal = GetFileNames('UnProccesed/Alzheimer_MRI/Non_Demented')
-        kmeansNormalTensor = SaveToTensor(normal, reshape = False)
-        normalFeatures = CS.featureExtract(kmeansNormalTensor)
-        normalDistribution = CS.getKNearest(normalFeatures, normal, healthy_size)
-        del kmeansNormalTensor
+        NormalX = torch.load('Proccesed/Alzheimer_MRI/train/SplitTrainnormal.pt')
+        normalFeatures = CS.featureExtract(NormalX)
+        normalDistribution = CS.getKNearest(normalFeatures, NormalX, k = int(np.rint(NormalX.shape[0] * SampleRatio)))
+        torch.save(normalDistribution, f = 'Proccesed/Alzheimer_MRI/train/normalDistribution.pt')
+        del NormalX
         del normalFeatures
-        gc.collect()
-        normalTensor = SaveToTensor(normalDistribution, reshape = False)
-        torch.save(normalTensor, f = 'Proccesed/Alzheimer_MRI/train/normalDementedDistribution.pt')
-        del normalTensor
         del normalDistribution
         gc.collect()
-
-        ## making coreset selection based on destribution
-        #prep the labels for pneumonia tensor
         print('Getting Sick images...')
-        Moderate = GetFileNames('UnProccesed/Alzheimer_MRI/Moderate_Demented')
-        Mild = GetFileNames('UnProccesed/Alzheimer_MRI/Mild_Demented')
-        VeryMild = GetFileNames('UnProccesed/Alzheimer_MRI/Very_Mild_Demented')
-        Demented = Moderate + Mild + VeryMild
-        kmeansDementedTensor = SaveToTensor(Demented, reshape = False)
-        DementedFeatures = CS.featureExtract(kmeansDementedTensor)
-        del kmeansDementedTensor
-        gc.collect()
+        DementedX = torch.load('Proccesed/Alzheimer_MRI/train/SplitTrainDemented.pt')
+        DementedFeatures = CS.featureExtract(DementedX)
         DementedDistribution = CS.getKNearest(DementedFeatures, Demented, unhealthy_size)
-        DementedTensor = SaveToTensor(DementedDistribution, reshape = False)
-        torch.save(DementedTensor , f = 'Proccesed/Alzheimer_MRI/train/DementedDistribution.pt')
-        del DementedTensor
+        torch.save(DementedDistribution, f = 'Proccesed/Alzheimer_MRI/train/DementedDistribution.pt')
+        del DementedX
+        del DementedFeatures
+        del DementedDistribution
         gc.collect()
-        print('Saving tensor...')
-
-        x, y = DataPrep('Proccesed/Alzheimer_MRI/train/normalDementedDistribution.pt', 'Proccesed/Alzheimer_MRI/train/DementedDistribution.pt')
-        trainX, valX, trainY, valY = train_test_split(x, y, test_size = 0.3, random_state= 1)
-        torch.save(trainX, f = 'Proccesed/Alzheimer_MRI/DistributiontrainX.pt')
-        torch.save(trainY, f = 'Proccesed/Alzheimer_MRI/DistributiontrainY.pt')
-        torch.save(valX, f = 'Proccesed/Alzheimer_MRI/DistributionValX.pt')
-        torch.save(valY, f = 'Proccesed/Alzheimer_MRI/DistributionValY.pt')
-
+        print('Generating final tensor...')
+        x, y = DataPrep('Proccesed/Alzheimer_MRI/train/normalDistribution.pt', 'Proccesed/Alzheimer_MRI/train/DementedDistribution.pt')
+        torch.save(X, f = 'Proccesed/Alzheimer_MRI/DistributiontrainX.pt')
+        torch.save(Y, f = 'Proccesed/Alzheimer_MRI/DistributiontrainY.pt')
         print('Done. -> Proccesed/Alzheimer_MRI/')
     if generateRandom == False and generateDistriution == False:
         print('No Version Choosen -> Nothing made')

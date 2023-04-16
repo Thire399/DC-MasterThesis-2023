@@ -33,20 +33,20 @@ model.fc = nn.Linear(in_features = 2048, out_features = 1, bias = True)
 #Data parameters
 dataSet      = 'Alzheimer_MRI'
 #dataSet      = 'chest_xray'
-datatype     = 'Random'
+datatype     = ''
 #'10PercentDistribution'
-costumLabel  = '64x64Random'#
+costumLabel  = '128x128Full'#
 #costumLabel = '64x6410PercentDistribution'
 
 dev = False
 #model parameters
 patience     = 10 #
-delta        = 1e-9
+delta        = 1e-4
 epochs       = 400
 
-learningRate = 1e-8
-#optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.9)
-optimizer    =  optim.Adam(model.parameters(), lr = learningRate)
+learningRate = 1e-3
+optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.9)
+#optimizer    =  optim.Adam(model.parameters(), lr = learningRate)
 loss_Fun     = nn.BCEWithLogitsLoss()
 batch_size   = 32
 saveModel    = True

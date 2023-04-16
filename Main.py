@@ -16,9 +16,14 @@ os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
 
 #model = models.alexnet(pretrained = False)
 #model.classifier[6] = nn.Linear(in_features=4096, out_features = 1, bias=True)
+#model = models.efficientnet_v2_s(pretrained = False)
+#model.classifier[1] = nn.Linear(in_features=1280, out_features = 1, bias=True)
+#model = models.inception_v3(pretrained = False)
+#model.fc = nn.Linear(in_features=2048, out_features = 1, bias=True)
 
 model = models.resnet50(pretrained = False)
-model.fc = nn.Linear(in_features = 2048, out_features = 1, bias=True)
+model.fc = nn.Linear(in_features = 2048, out_features = 1, bias = True)
+
 #model.fc.add_module('Sigmoid', nn.Sigmoid())
 #model = M.UNet(enc_chs = (3, 64, 128, 256, 512, 1024)
 #               , dec_chs = (1024, 512, 256, 128, 64)
@@ -28,20 +33,20 @@ model.fc = nn.Linear(in_features = 2048, out_features = 1, bias=True)
 #Data parameters
 dataSet      = 'Alzheimer_MRI'
 #dataSet      = 'chest_xray'
-datatype     = ''
+datatype     = 'Random'
 #'10PercentDistribution'
-costumLabel  = '128z128 Full'#
+costumLabel  = '64x64Random'#
 #costumLabel = '64x6410PercentDistribution'
 
 dev = False
 #model parameters
 patience     = 10 #
-delta        = 1e-4
+delta        = 1e-9
 epochs       = 400
 
-learningRate = 1e-3
-optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.5)
-#optimizer    =  optim.Adam(model.parameters(), lr = learningRate)
+learningRate = 1e-8
+#optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.9)
+optimizer    =  optim.Adam(model.parameters(), lr = learningRate)
 loss_Fun     = nn.BCEWithLogitsLoss()
 batch_size   = 32
 saveModel    = True
@@ -102,29 +107,6 @@ def __main__():
             parser.print_aggregate(log_dir= 'Data/Loss_' + dataSet + '/test/CarbonLogs') 
         else:
             parser.print_aggregate(log_dir= 'Data/Loss_' + dataSet + '/CarbonLogs')
-#
-#        import pandas as pd
-#        import plotly.graph_objects as go
-#
-#        fig = go.Figure(data=go.Scatterpolar(r = [10.0, 0.33, epochs]
-#                                               ,theta = ['fscore', "time", "epoch"],
-#                                                fill='toself'
-#                                             )
-#                                         )
-#        print(fscore)
-#        fig.update_layout(
-#                polar=dict(
-#                radialaxis=dict(
-#                visible=True
-#                ),
-#            ),
-#            showlegend=False
-#        )
-#        fig.show()
-#        #df = pd.DataFrame(dict(r = [fscore, 0.33, epochs]
-#        #                        ,theta = ['fscore', "time", "epoch"]))
-#        #fig = px.line_polar(df, r='r', theta='theta', line_close=True)
-#        #fig.show()
         return None
 
 

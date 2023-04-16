@@ -17,17 +17,17 @@ directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'
 os.chdir(directory)
 healthy_size = 400
 unhealthy_size = 400
-SampleRatio = 0.10 # procentage of the dataset.
+SampleRatio = 0.001 # procentage of the dataset.
 imgSize = (64, 64)
 vira = False
-alzimers = False
-Chest_Xray = True
-customLabel = 'Test'
+alzimers = True
+Chest_Xray = False
+customLabel = '01Percent'
 #Dataset to create
-make_new_split = True
+make_new_split = False
 generateRandom = True
-generateDistriution = False
-Val = True
+generateDistriution = True
+Val = False # only for chest x_ray
 os.makedirs('Proccesed/chest_xray/train', exist_ok = True)
 #function to get all file names in the folder.
 def GetFileNames(path = 'None', isVira = False):
@@ -264,7 +264,7 @@ if Chest_Xray:
 
 if alzimers == True:
     
-    if ((os.path.isfile('Proccesed/Alzheimer_MRI/trainX.pt') == False) and (os.path.isfile('Proccesed/Alzheimer_MRI/trainY.pt') == False)):
+    if make_new_split:
         print('Creating Full data set...')
         os.makedirs('Proccesed/Alzheimer_MRI/train', exist_ok = True)
         print('Getting healty images...')
@@ -280,7 +280,7 @@ if alzimers == True:
         del normal # clean up step
         del newNormal
         del normalTensor
-        del valNormalTensor
+        del valnormalTensor
         del testnormalTensor
         gc.collect()
         print('Getting Sick images...')
@@ -296,11 +296,11 @@ if alzimers == True:
         torch.save(DementedTensor, f = 'Proccesed/Alzheimer_MRI/train/SplitTrainDemented.pt')
         torch.save(valDementedTensor, f = 'Proccesed/Alzheimer_MRI/train/SplitValDemented.pt')
         torch.save(testDementedTensor, f = 'Proccesed/Alzheimer_MRI/train/SplitTestDemented.pt')
-        del normal # clean up step
-        del newNormal
-        del normalTensor
-        del valNormalTensor
-        del testnormalTensor
+        del Demented # clean up step
+        del newDemented
+        del DementedTensor
+        del valDementedTensor
+        del testDementedTensor
         gc.collect()
         print('Saving Tensors to: "Proccesed/Alzheimer_MRI/"')
         x, y = DataPrep('Proccesed/Alzheimer_MRI/train/SplitTrainnormal.pt', 'Proccesed/Alzheimer_MRI/train/SplitTrainDemented.pt')
@@ -325,12 +325,24 @@ if alzimers == True:
         NormalRandX, NormalRandY = CS.RandomSelection(NormalX, NormalY, k = int(np.rint(NormalX.shape[0] * SampleRatio)))
         #torch.save(NormalRandX, f = 'Proccesed/Alzheimer_MRI/train/RandomTrainNormal.pt')
         DementedX = torch.load('Proccesed/Alzheimer_MRI/train/SplitTrainDemented.pt')
-        DementedY = torch.from_numpy(np.asarray([0]*DementedX.shape[0]))
+        DementedY = torch.from_numpy(np.asarray([1]*DementedX.shape[0]))
         DementedRandX, DementedRandY = CS.RandomSelection(DementedX, DementedY, k = int(np.rint(DementedX.shape[0] * SampleRatio)))        
         RandX = torch.cat((NormalRandX, DementedRandX))
         RandY = torch.cat((NormalRandY, DementedRandY))
-        torch.save(RandX, f = 'Proccesed/Alzheimer_MRI/RandomtrainX.pt')
-        torch.save(RandY, f = 'Proccesed/Alzheimer_MRI/RandomtrainY.pt')
+        torch.save(RandX, f = f'Proccesed/Alzheimer_MRI/{customLabel}RandomtrainX.pt')
+        torch.save(RandY, f = f'Proccesed/Alzheimer_MRI/{customLabel}RandomtrainY.pt')
+        del NormalX
+        del NormalY
+        del NormalRandX
+        del NormalRandY
+        del DementedX
+        del DementedY
+        del DementedRandX
+        del DementedRandY
+        del RandX
+        del RandY
+        gc.collect()
+        print('Made Random selection dataset')      
 
     if generateDistriution:
         print('\n\nStarting coreset selection distribution.')
@@ -350,16 +362,16 @@ if alzimers == True:
         print('Getting Sick images...')
         DementedX = torch.load('Proccesed/Alzheimer_MRI/train/SplitTrainDemented.pt')
         DementedFeatures = CS.featureExtract(DementedX)
-        DementedDistribution = CS.getKNearest(DementedFeatures, Demented, unhealthy_size)
+        DementedDistribution = CS.getKNearest(DementedFeatures, DementedX, int(np.rint(DementedX.shape[0] * SampleRatio)))
         torch.save(DementedDistribution, f = 'Proccesed/Alzheimer_MRI/train/DementedDistribution.pt')
         del DementedX
         del DementedFeatures
         del DementedDistribution
         gc.collect()
         print('Generating final tensor...')
-        x, y = DataPrep('Proccesed/Alzheimer_MRI/train/normalDistribution.pt', 'Proccesed/Alzheimer_MRI/train/DementedDistribution.pt')
-        torch.save(X, f = 'Proccesed/Alzheimer_MRI/DistributiontrainX.pt')
-        torch.save(Y, f = 'Proccesed/Alzheimer_MRI/DistributiontrainY.pt')
+        X, Y = DataPrep('Proccesed/Alzheimer_MRI/train/normalDistribution.pt', 'Proccesed/Alzheimer_MRI/train/DementedDistribution.pt')
+        torch.save(X, f = f'Proccesed/Alzheimer_MRI/{customLabel}DistributiontrainX.pt')
+        torch.save(Y, f = f'Proccesed/Alzheimer_MRI/{customLabel}DistributiontrainY.pt')
         print('Done. -> Proccesed/Alzheimer_MRI/')
     if generateRandom == False and generateDistriution == False:
         print('No Version Choosen -> Nothing made')

@@ -32,7 +32,7 @@ def PRAUC(pred, Target, ep):
     bestT = T[ix]
     print('Best Threshold=%f, F-Score=%.3f' % (T[ix], fscore[ix]))
     Prediction = [int(round(x[0])) if x[0] >= bestT else 0 for x in pred]
-    return P[ix], R[ix], Prediction, fscore, bestT
+    return P[ix], R[ix], Prediction, fscore[ix], bestT
 
 def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimizer, loss_Fun, modelSave, figSave, dataSet, costumLabel, dev = False):
     
@@ -170,7 +170,7 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
 
     return None
 
-def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '64x64', threshold = None):
+def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '64x64', threshold = None, isPrint = True):
     torch.cuda.empty_cache()
         #new trying something with PRAUC
     predictionList = []
@@ -209,7 +209,7 @@ def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '
             predictionList.append(p) #np.argmax(p))
         for t in target.detach().cpu().numpy():
             targetList.append(t)
-        if batch % 8 == 0: #For printing
+        if batch % 8 == 0 and isPrint: #For printing
             print(4*' ', '===> F-Score: [{}/{} ({:.0f}%)]\t'.format(
                 batch * len(data), len(val_Loader.dataset),
                 100. * batch / len(val_Loader)))

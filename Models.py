@@ -125,7 +125,7 @@ class CD_temp(nn.Module):
         self.sigmod     = nn.Sigmoid()
         self.ReLu       = nn.ReLU()
         self.maxpooling = nn.MaxPool2d(2)
-        self.fc         = nn.Linear(3072, 2)
+        self.fc         = nn.Linear(12288, 1)
         # initialize the weights
         self._init_weights()
 
@@ -137,7 +137,6 @@ class CD_temp(nn.Module):
                     m.weight.requires_grad_(True)
 
         return None
-
 
     def forward(self, x):
         out = self.Conv1(x)

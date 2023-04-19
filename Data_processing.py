@@ -13,20 +13,21 @@ import random
 # Change for your own file path. Should only need to change this path. all other paths should be fine as is.!!
 
 # TODO: update function description to standard.
+# TODO: update to be a function call in some other document, that takes all these parameters
 directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'
 os.chdir(directory)
-healthy_size = 400
-unhealthy_size = 400
+healthy_size = 1
+unhealthy_size = 3
 SampleRatio = 0.3 # procentage of the dataset.
-imgSize = (64, 64)
+imgSize = (800, 800)
 vira = False
-alzimers = True
+alzimers = False
 Chest_Xray = False
-customLabel = '30Percent'
+customLabel = '01Percent'
 #Dataset to create
 make_new_split = False
-generateRandom = True
-generateDistriution = True
+generateRandom = False
+generateDistriution = False
 Val = False # only for chest x_ray
 os.makedirs('Proccesed/chest_xray/train', exist_ok = True)
 #function to get all file names in the folder.
@@ -134,17 +135,18 @@ if Chest_Xray:
         del pneumoniaTensor
         gc.collect
         x, y = DataPrep('Proccesed/chest_xray/train/Splitnormal.pt', 'Proccesed/chest_xray/train/Splitpneumonia.pt')
-        x = ReadFromTensor(x, imgSize[0], imgSize[1], readfromFile = False)
+        #x = ReadFromTensor(x, imgSize[0], imgSize[1], readfromFile = False)
         torch.save(x, f = 'Proccesed/chest_xray/trainX.pt')
         torch.save(y, f = 'Proccesed/chest_xray/trainY.pt')
         del x
         del y
         gc.collect()
         print('Validation data...')
-        ValnormalTensor = SaveToTensor(valNormalTensor, imgSize[0], imgSize[1])
+        
+        valNormalTensor = SaveToTensor(valNormalTensor, imgSize[0], imgSize[1])
         valPneumoniaTensor = SaveToTensor(valPneumoniaTensor, imgSize[0], imgSize[1])
 
-        torch.save(ValnormalTensor, f = 'Proccesed/chest_xray/train/tempNormalValX.pt')
+        torch.save(valNormalTensor, f = 'Proccesed/chest_xray/train/tempNormalValX.pt')
         torch.save(valPneumoniaTensor, f = 'Proccesed/chest_xray/train/tempPneumoniaValX.pt')
         x, y = DataPrep('Proccesed/chest_xray/train/tempNormalValX.pt', 'Proccesed/chest_xray/train/tempPneumoniaValX.pt')
         torch.save(x, f = 'Proccesed/chest_xray/tempValX.pt')
@@ -168,13 +170,13 @@ if Chest_Xray:
     if generateRandom == True:
         print('Generating random...')
         X = torch.load('Proccesed/chest_xray/train/Splitnormal.pt')
-        X = ReadFromTensor(X, imgSize[0], imgSize[1], readfromFile= False)
+        #X = ReadFromTensor(X, imgSize[0], imgSize[1], readfromFile= False)
         #Y = torch.load('Proccesed/chest_xray/trainY.pt')
         Y = torch.from_numpy(np.asarray([0]*X.shape[0]))
         NormalRandX, NormalRandY = CS.RandomSelection(X, Y, k = healthy_size)
         #Unhealthy
         X = torch.load('Proccesed/chest_xray/train/Splitpneumonia.pt')
-        X = ReadFromTensor(X, imgSize[0], imgSize[1], readfromFile= False)
+        #X = ReadFromTensor(X, imgSize[0], imgSize[1], readfromFile= False)
         #Y = torch.load('Proccesed/chest_xray/trainY.pt')
         Y = torch.from_numpy(np.asarray([1]*X.shape[0]))
         pneumoniaRandX, pneumoniaRandY = CS.RandomSelection(X, Y, k = unhealthy_size)
@@ -212,10 +214,8 @@ if Chest_Xray:
         print('Non-sick images...')
         normal = torch.load('Proccesed/chest_xray/train/Splitnormal.pt')
         normalFeatures = CS.featureExtract(normal)
-        del normal
-        gc.collect()
-        normal = ReadFromTensor('Proccesed/chest_xray/train/Splitnormal.pt',
-                                     imgSize[0], imgSize[1])
+        #normal = ReadFromTensor('Proccesed/chest_xray/train/Splitnormal.pt',
+        #                             imgSize[0], imgSize[1])
         normalDistribution = CS.getKNearest(normalFeatures, normal, healthy_size)
         del normal
         del normalFeatures
@@ -229,10 +229,9 @@ if Chest_Xray:
         print('Sick images...')
         pneumonia = torch.load('Proccesed/chest_xray/train/Splitpneumonia.pt')
         pneumoniaFeatures = CS.featureExtract(pneumonia)
-        del pneumonia
         gc.collect()
-        pneumonia = ReadFromTensor('Proccesed/chest_xray/train/Splitpneumonia.pt',
-                                imgSize[0], imgSize[1])
+        #pneumonia = ReadFromTensor('Proccesed/chest_xray/train/Splitpneumonia.pt',
+        #                        imgSize[0], imgSize[1])
         pneumoniaDistribution = CS.getKNearest(pneumoniaFeatures, pneumonia, unhealthy_size)
         torch.save(pneumoniaDistribution , f = 'Proccesed/chest_xray/train/pneumoniaDistribution.pt')
         del pneumoniaFeatures

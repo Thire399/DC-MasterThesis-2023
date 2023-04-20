@@ -21,7 +21,7 @@ def Gen_Y(size):
 class GradientMatching():
     def __init__(self, model, batchSize, syntheticSampleSize, k, t, c, lr_Theta, lr_S, loss_Fun) -> None:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.model = model#.to(self.device)
+        self.model = model.to(self.device)
         self.batch_size = batchSize
         self.k   = k
         self.t   = t
@@ -33,6 +33,8 @@ class GradientMatching():
         self.loss_Fun = loss_Fun
         self.optimizerT = optim.SGD(self.model.parameters(), lr = lr_Theta)
         self.optimizerS = optim.SGD([self.S_x], lr = lr_S)
+        print(f'Setup:\n\tUsing Compute: {self.device}\n\tk = {k}\n\tt = {t}\n\tc = {c}\n\tLearning Rate S: = {lr_S}',
+                            f'\tLearning Rate Theta = {lr_Theta}')
 #        print("Parameters:")
 #        for name, param in model.named_parameters():
 #            print(f"{name}: {param.shape}")
@@ -57,9 +59,9 @@ class GradientMatching():
         #self.optimizerS.zero_grad()
         #self.optimizerT.zero_grad()
         self.model.train()
-        out = self.model(x)
+        out = self.model(x.to(self.device))
         out = out.flatten()
-        loss = self.loss_Fun(out, y.type(torch.float32))
+        loss = self.loss_Fun(out, y.type(torch.float32).to(self.device))
         loss.backward()
         grad_list = []
         for i, l in enumerate(self.model.modules()):
@@ -71,21 +73,19 @@ class GradientMatching():
         return grad_list, loss
 
     def Generate(self, T_x, T_y):
-        #S_shape = (size_of_dataset, 1, height, width) 
+        #S_shape = (size_of_dataset, 1, height, width)
         #Note: assumes binary classification.
         Schange_class_index = torch.argmax(self.S_y).item()
         Tchange_class_index = torch.argmax(T_y).item()
-        # Do some setup
-        
         for k in range(self.k):
             print('init random weights...')
             self.model._init_weights() #Here?
             for t in range(self.t):
-                old = self.S_x.clone()
+                #old = self.S_x.clone()
                 #if t % 2 == 0:
                 print(f'K Iteration: {k}\n\tT Iteration: {t}')
                 for c in range(self.c):
-                    print('Generating Batches...')
+                    print('\t\tGenerating Batches...')
                     if c == 0:
                         T_DataX = torch.tensor(T_x[:Tchange_class_index])
                         T_DataY = torch.tensor(T_y[:Tchange_class_index])
@@ -96,7 +96,7 @@ class GradientMatching():
                         T_DataY = torch.tensor(T_y[Tchange_class_index:])
                         S_DataX = torch.tensor(self.S_x[Schange_class_index:])
                         S_DataY = torch.tensor(self.S_y[Schange_class_index:])
-                    print('Sampling...')
+                    print('\t\tSampling...')
                     T_BatchX = self.sampleRandom(T_DataX, batch_size = self.batch_size)
                     T_BatchY = self.sampleRandom(T_DataY, batch_size = self.batch_size)
                     S_BatchX = self.sampleRandom(S_DataX, batch_size = self.batch_size)                
@@ -107,21 +107,21 @@ class GradientMatching():
                     s_grad, loss = self.GetGradient(S_BatchX, S_BatchY)
                     D = self.Distance(t_grad, s_grad)
                     D.backward()
-                    print('distance ', D)
+                    #print('distance ', D)
                     self.optimizerS.step()
                 tempLossLst = []
                 Whole_S = torch.utils.data.TensorDataset(self.S_x, self.S_y)
-                S_loader = torch.utils.data.DataLoader(Whole_S,
-                                        batch_size = batch_size,
-                                        shuffle = False,
-                                        num_workers = 0)
+                S_loader = torch.utils.data.DataLoader(Whole_S
+                                                        , batch_size = batch_size
+                                                        , shuffle = True
+                                                        , num_workers = 0)
                 #below makes the changes the output shape of fc.
                 print('Training on whole S...')
                 for batch, (data, target) in enumerate(S_loader, 1):
                     self.optimizerT.zero_grad() # a clean up step for PyTorch
-                    out = model(data.type(torch.float32))#.to(device))
+                    out = model(data.type(torch.float32).to(self.device))
                     out = out.flatten()
-                    loss = self.loss_Fun(out, (target).type(torch.float32))#.to(device))
+                    loss = self.loss_Fun(out, (target).type(torch.float32).to(self.device))
                     tempLossLst.append(loss.item())
                     loss.backward()
                     self.optimizerT.step()
@@ -130,10 +130,9 @@ class GradientMatching():
                                 batch * len(data), len(S_loader.dataset),
                                 100. * batch / len(T_x),
                                 np.mean(tempLossLst)))
-                temp = torch.sum(torch.eq(old, self.S_x))
-                print(f'any change? (False = Yes!  True = No!):', temp == 9830400, f'is {temp}')
+                #temp = torch.sum(torch.eq(old, self.S_x))
+                #print(f'any change? (False = Yes!  True = No!):', temp == 9830400, f'is {temp}')
         return self.S_x, self.S_y
-
 
 class DistributionMatching():
     def __init__(self, model, k = 200, c=2,  batchSize = 64, syntheticSampleSize = 200):
@@ -214,9 +213,9 @@ model = M.CD_temp()
 print('\nStaring Condensation...\n')
 GM = GradientMatching(model
                         , batchSize = 64
-                        , syntheticSampleSize = 200
-                        , k = 2
-                        , t = 4
+                        , syntheticSampleSize = 400
+                        , k = 4
+                        , t = 30
                         , c = 2
                         , lr_Theta = 1e-3
                         , lr_S = 1e-3
@@ -224,6 +223,6 @@ GM = GradientMatching(model
 x, y = GM.Generate(xTrain, yTrain)
 x = x.cpu().detach().numpy()
 print(y[0])
-plt.imshow(x[0][0])
+plt.imshow(x[0][0], cmap = 'gray')
 #plt.savefig('Data/Loss_chest_xray/test/Test.png', dpi = 400, bbox_inches = 'tight')
 plt.show()

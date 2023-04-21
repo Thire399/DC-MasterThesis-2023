@@ -1,6 +1,7 @@
 import torch
 import os
 import warnings
+import torchvision.transforms.functional as TF
 import matplotlib.pyplot as plt
 import numpy as np
 import Models as M
@@ -8,6 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics.pairwise import rbf_kernel
 import Data_processing as DP
+from torchvision import transforms
 
 warnings.filterwarnings("ignore")
 
@@ -96,6 +98,7 @@ class GradientMatching():
                         T_DataY = torch.tensor(T_y[Tchange_class_index:])
                         S_DataX = torch.tensor(self.S_x[Schange_class_index:])
                         S_DataY = torch.tensor(self.S_y[Schange_class_index:])
+                        print(T_DataX)
                     print('\t\tSampling...')
                     T_BatchX = self.sampleRandom(T_DataX, batch_size = self.batch_size)
                     T_BatchY = self.sampleRandom(T_DataY, batch_size = self.batch_size)
@@ -134,6 +137,43 @@ class GradientMatching():
                 #print(f'any change? (False = Yes!  True = No!):', temp == 9830400, f'is {temp}')
         return self.S_x, self.S_y
 
+
+def rotate_images(images):
+    rotated_images = []
+    for image in images:
+        # Convert tensor to PIL Image
+        pil_image = TF.to_pil_image(image)
+        # Rotate PIL Image
+        rotated_pil_image = TF.rotate(pil_image, 15)
+        # Convert rotated PIL Image back to tensor
+        rotated_image = TF.to_tensor(rotated_pil_image)
+        rotated_images.append(rotated_image)
+    return rotated_images
+
+def flip_images(images):
+    flipped_images = []
+    for image in images:
+        # Convert tensor to PIL Image
+        pil_image = TF.to_pil_image(image)
+        # Flip PIL Image horizontally
+        flipped_pil_image = TF.hflip(pil_image)
+        # Convert flipped PIL Image back to tensor
+        flipped_image = TF.to_tensor(flipped_pil_image)
+        flipped_images.append(flipped_image)
+    return flipped_images
+
+def brighten_images(images, brightness_factor):
+    brightened_images = []
+    for image in images:
+        # Convert tensor to PIL Image
+        pil_image = TF.to_pil_image(image)
+        # Brighten PIL Image
+        brightened_pil_image = TF.adjust_brightness(pil_image, brightness_factor)
+        # Convert brightened PIL Image back to tensor
+        brightened_image = TF.to_tensor(brightened_pil_image)
+        brightened_images.append(brightened_image)
+    return brightened_images
+
 class DistributionMatching():
     def __init__(self, model, k = 200, c=2,  batchSize = 64, syntheticSampleSize = 200):
         self.model = model
@@ -143,18 +183,15 @@ class DistributionMatching():
         S_x = torch.rand((syntheticSampleSize, 3, 64, 64))
         S_y = Gen_Y(S_x.shape[0])
         self.synthetic = torch.utils.data.TensorDataset(S_x, S_y)
-
     def Empirical_mmd(X, Y, gamma):
         K_xx = rbf_kernel(X, X, gamma)
         K_xy = rbf_kernel(X, Y, gamma)
         K_yy = rbf_kernel(Y, Y, gamma)
         mmd = np.mean(K_xx) - 2 * np.mean(K_xy) + np.mean(K_yy)
         return mmd
-
     def sampleRandom(self, data, batch_size):
         index = np.random.randint(data.shape[0], size = batch_size)
         return torch.stack([data[i] for i in index])
-
     def DM(self, T_x, T_y, S_x, S_y,):
         Schange_class_index = torch.argmax(S_y).item()
         Tchange_class_index = torch.argmax(T_y).item()
@@ -178,7 +215,6 @@ class DistributionMatching():
                 S_BatchX = self.sampleRandom(S_DataX, batch_size = batch_size)                
                 S_BatchY = self.sampleRandom(S_DataY, batch_size = batch_size)
                 old = S_BatchX
-
     
         return None
 
@@ -189,7 +225,7 @@ class DistributionMatching():
 dataset = 'Alzheimer_MRI'
 datatype     = ''
 costumLabel  = '64x64Full'
-os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
+os.chdir('/Users/andreamoody/Documents/GitHub/DC-MasterThesis-2023')
 batch_size   = 64
 ####### PARAMETERS #######
 print('preparing training data...')

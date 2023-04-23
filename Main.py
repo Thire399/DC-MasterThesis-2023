@@ -34,11 +34,12 @@ model.fc = nn.Linear(in_features = 2048, out_features = 1, bias = True)
 #               , df = 16384) # binary classification = 1.
 
 #Data parameters
+synthetic = True
 dataSet      = 'Alzheimer_MRI'
 #dataSet      = 'chest_xray'
-datatype     = '30PercentDistribution'
+datatype     = 'Test'
 #'10PercentDistribution'
-costumLabel  = '128x128-30PercentDistribution'#
+costumLabel  = 'SyntheticMRI128x128'#
 #costumLabel = '64x6410PercentDistribution'
 
 dev = False
@@ -59,17 +60,22 @@ figSave      = True
 ####### Main Calls ########
 
 def __main__():
-
-        xTrain = torch.load('Data/Proccesed/'+ dataSet +'/' + datatype + 'trainX.pt')
-        yTrain = torch.load('Data/Proccesed/'+ dataSet +'/' + datatype + 'trainY.pt')
+        if synthetic:
+            xTrain = torch.load(f'Data/Synthetic_{dataSet}/' + datatype + 'X.pt')
+            yTrain = torch.load(f'Data/Synthetic_{dataSet}/' + datatype + 'Y.pt') 
+        else:
+            xTrain = torch.load('Data/Proccesed/'+ dataSet +'/' + datatype + 'trainX.pt')
+            yTrain = torch.load('Data/Proccesed/'+ dataSet +'/' + datatype + 'trainY.pt')
+            xTrain = xTrain.repeat(1, 3, 1, 1) # only for pretrained model
         if dataSet == 'chest_xray':
             xVal = torch.load('Data/Proccesed/'+ dataSet + '/tempValX.pt')
             yVal = torch.load('Data/Proccesed/'+ dataSet + '/tempValY.pt')
+            xVal = xVal.repeat(1, 3, 1, 1)     # only for pretrained model
         else:
             xVal = torch.load('Data/Proccesed/'+ dataSet + '/ValX.pt')
             yVal = torch.load('Data/Proccesed/'+ dataSet + '/ValY.pt')
-        xTrain = xTrain.repeat(1, 3, 1, 1) # only for pretrained model
-        xVal = xVal.repeat(1, 3, 1, 1)     # only for pretrained model
+            xVal = xVal.repeat(1, 3, 1, 1)     # only for pretrained model
+        
         train_Set = torch.utils.data.TensorDataset(xTrain, yTrain)
         train_Loader = torch.utils.data.DataLoader(train_Set,
                                                 batch_size = batch_size,

@@ -95,7 +95,6 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
             out = model(data.type(torch.float32).to(device))
             out = out.flatten()
             loss = loss_Fun(out, (target).type(torch.float32).to(device))
-            
             loss.backward()
             optimizer.step()
             batchTrain_loss.append(loss.item())

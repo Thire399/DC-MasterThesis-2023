@@ -110,10 +110,61 @@ class resnet(nn.Module):
         return x
 
 
+########## Condensation model from the paper ##############
+
+class ConvNet(nn.Module):
+    def __init__(self, num_classes=1):
+        super(ConvNet, self).__init__()
+        
+        self.conv1 = nn.Conv2d(3, 128, kernel_size=3, padding=1)
+        self.norm1 = nn.InstanceNorm2d(128)
+        self.relu1 = nn.ReLU(inplace=True)
+        self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
+        
+        self.conv2 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        self.norm2 = nn.InstanceNorm2d(128)
+        self.relu2 = nn.ReLU(inplace=True)
+        self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
+        
+        self.conv3 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        self.norm3 = nn.InstanceNorm2d(128)
+        self.relu3 = nn.ReLU(inplace=True)
+        self.pool3 = nn.AvgPool2d(kernel_size=2, stride=2)
+        
+        self.fc = nn.Linear(32768, num_classes)
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
+                nn.init.xavier_uniform_(m.weight)#, mean=0.0, std=0.01)
+                if hasattr(m, 'weight') and m.weight is not None:
+                    m.weight.requires_grad_(True)
+
+        return None
+    def forward(self, x):
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.relu1(out)
+        out = self.pool1(out)
+        
+        out = self.conv2(out)
+        out = self.norm2(out)
+        out = self.relu2(out)
+        out = self.pool2(out)
+        
+        out = self.conv3(out)
+        out = self.norm3(out)
+        out = self.relu3(out)
+        out = self.pool3(out)
+        
+        out = out.view(out.size(0), -1)
+        out = self.fc(out)
+        
+        return out
+
+##########################################################
 
 ##################################### 
 ### Temp condensation model ###
-
 class CD_temp(nn.Module):
     def __init__(self):
         #remake to use conv.

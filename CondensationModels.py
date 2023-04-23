@@ -261,7 +261,6 @@ if andrea:
     os.chdir('/Users/andreamoody/Documents/GitHub/DC-MasterThesis-2023')
 else:
     os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
-    
 batch_size   = 64
 ####### PARAMETERS #######
 print('preparing training data...')

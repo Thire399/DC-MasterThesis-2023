@@ -38,9 +38,9 @@ class GradientMatching():
         os.makedirs(f'{self.savePath}/CarbonLogs', exist_ok = True)
         self.customLabel = customLabel
         self.lr_S = lr_S
-        self.noise = torch.randn(syntheticSampleSize, 3, 128, 128)
-        self.S_x = torch.zeros(syntheticSampleSize, 3, 128, 128, dtype = torch.float)
-        #self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 3, 128, 128)), requires_grad = True) #Totally random data
+        #self.noise = torch.randn(syntheticSampleSize, 3, 128, 128)
+        #self.S_x = torch.zeros(syntheticSampleSize, 3, 128, 128, dtype = torch.float)
+        self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 3, 128, 128)), requires_grad = True) #Totally random data
         self.S_y = Gen_Y(self.S_x.shape[0])
         self.loss_Fun = loss_Fun
         self.optimizerT = optim.SGD(self.model.parameters(), lr = lr_Theta, momentum = 0.5)
@@ -69,8 +69,6 @@ class GradientMatching():
         return torch.stack([data[i] for i in index])
 
     def GetGradient(self, x, y):
-        #self.optimizerS.zero_grad() #adding this breaks things?
-        #self.optimizerT.zero_grad() #adding this breaks things?
         self.model.train()
         out = self.model(x.to(self.device))
         out = out.flatten()
@@ -101,14 +99,15 @@ class GradientMatching():
         Schange_class_index = torch.argmax(self.S_y).item()
         Tchange_class_index = torch.argmax(T_y).item()
         
-        c0 = random.sample(range(0, 4032), 400)
-        self.S_y = T_y[c0]
-        self.S_x = T_x[c0]
-        self.S_x = self.S_x + self.noise
-        Schange_class_index = torch.argmax(self.S_y).item()
+        #c0 = random.sample(range(0, 4032), 400)
+        #self.S_y = T_y[c0]
+        #self.S_x = T_x[c0]
+        #self.S_x = self.S_x + self.noise
+        #Schange_class_index = torch.argmax(self.S_y).item()
         torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/BeforeX.pt')
         torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/BeforeY.pt')
         print(self.S_x.shape, self.S_y.shape)
+        DistanceLst = []
         for k in range(self.k):
             print('init random weights...')
             self.model._init_weights()
@@ -139,8 +138,11 @@ class GradientMatching():
                     s_grad, loss = self.GetGradient(S_BatchX, S_BatchY)
                     D = self.Distance(t_grad, s_grad)
                     D.backward()
+                    DistanceLst.append(D.detach().cpu().numpy())
                     #print('distance ', D)
                     self.optimizerS.step()
+                    self.optimizerS.zero_grad()
+                    self.optimizerT.zero_grad()
                 Whole_S = torch.utils.data.TensorDataset(self.S_x, self.S_y)
                 S_loader = torch.utils.data.DataLoader(Whole_S
                                                         , batch_size = batch_size
@@ -166,7 +168,7 @@ class GradientMatching():
                 #print(f'any change? (False = Yes!  True = No!):', temp == 9830400, f'is {temp}')
         self.carbonTracker.stop()
                 
-        return self.S_x, self.S_y
+        return self.S_x, self.S_y, DistanceLst
 
 
 def rotate_images(images):
@@ -281,19 +283,22 @@ print('\nStaring Condensation...\n')
 GM = GradientMatching(model
                         , batchSize = 64
                         , syntheticSampleSize = 400
-                        , k = 10
-                        , t = 60
+                        , k = 1000
+                        , t = 2
                         , c = 2
-                        , lr_Theta = 1e-4
-                        , lr_S = 1.0
+                        , lr_Theta = 0.01
+                        , lr_S = 0.1
                         , loss_Fun = nn.BCEWithLogitsLoss()
                         , DataSet = dataset
                         , customLabel = costumLabel)
 
-x, y = GM.Generate(xTrain, yTrain)
+x, y, d = GM.Generate(xTrain, yTrain)
 GM.save_output()
 x = x.cpu().detach().numpy()
-print(y[0])
-plt.imshow(x[0][0], cmap = 'gray')
-#plt.savefig('Data/Loss_chest_xray/test/Test.png', dpi = 400, bbox_inches = 'tight')
+plt.plot(range(len(d)), d)
 plt.show()
+
+#print(y[0])
+#plt.imshow(x[0][0], cmap = 'gray')
+##plt.savefig('Data/Loss_chest_xray/test/Test.png', dpi = 400, bbox_inches = 'tight')
+#plt.show()

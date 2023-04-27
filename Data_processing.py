@@ -19,13 +19,13 @@ os.chdir(directory)
 healthy_size = 1
 unhealthy_size = 3
 SampleRatio = 0.3 # procentage of the dataset.
-imgSize = (800, 800)
+imgSize = (600, 600)
 vira = False
 alzimers = False
-Chest_Xray = False
+Chest_Xray = True
 customLabel = '01Percent'
 #Dataset to create
-make_new_split = False
+make_new_split = True
 generateRandom = False
 generateDistriution = False
 Val = False # only for chest x_ray
@@ -120,7 +120,7 @@ if Chest_Xray:
         print('Cerating a new training split...')
         normal = GetFileNames('UnProccesed/chest_xray/train/NORMAL')
         newNormal, valNormalTensor = split(normal)
-        normalTensor = SaveToTensor(newNormal, 800, 800)
+        normalTensor = SaveToTensor(newNormal, 600, 600)
         torch.save(normalTensor, f = 'Proccesed/chest_xray/train/Splitnormal.pt')
         del normal
         del newNormal
@@ -128,7 +128,7 @@ if Chest_Xray:
         gc.collect()
         pneumonia = GetFileNames('UnProccesed/chest_xray/train/PNEUMONIA')
         newPneumonia, valPneumoniaTensor = split(pneumonia)
-        pneumoniaTensor = SaveToTensor(newPneumonia, 800, 800)
+        pneumoniaTensor = SaveToTensor(newPneumonia, 600, 600)
         torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/train/Splitpneumonia.pt')
         del pneumonia
         del newPneumonia

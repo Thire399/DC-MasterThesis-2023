@@ -174,23 +174,28 @@ class GradientMatching():
 
 class DistributionMatching():
 
-    def __init__(self, model, k = 200, c = 2,  batchSize = 64, syntheticSampleSize = 200
-                 , loss_Fun = nn.BCEWithLogitsLoss(), lr_S = 1e-3):
-        self.model = model
+    def __init__(self, model, k:int, c:int,  batchSize:int, syntheticSampleSize :int
+                 ,loss_Fun, lr_S:float, DataSet:str, customLabel:str) -> None:
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.model = model.to(self.device)
+        self.batch_size = batchSize
         self.k = k
         self.c = c
-        self.batch_size = batchSize
+        self.savePath = f'Data/Synthetic_{DataSet}'
+        os.makedirs(f'{self.savePath}/CarbonLogs', exist_ok = True)
+        self.customLabel = customLabel
+        self.lr_S = lr_S
         self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 3, 128, 128)), requires_grad = True) #Totally random data
         self.S_y = Gen_Y(self.S_x.shape[0])
         self.loss_Fun = loss_Fun
         self.optimizer = optim.SGD([self.S_x], lr = lr_S, momentum = 0.5)
-        self.carbonTracker = CarbonTracker(epochs = self.k*self.t, 
+        self.carbonTracker = CarbonTracker(epochs = self.k, 
                             log_dir = self.savePath + '/CarbonLogs',
                             log_file_prefix = costumLabel + model._get_name(),
                             monitor_epochs = -1,
                             update_interval = 0.01
                             )
-        print(f'Setup:\n\tUsing Compute: {self.device}\n\tk = {k}\n\tt = {t}\n\tc = {c}\n\tLearning Rate S: = {lr_S}')
+        print(f'Setup:\n\tUsing Compute: {self.device}\n\tk = {k}\n \tc = {c}\n\tLearning Rate S: = {lr_S}')
     def rotate_images(images):
         rotated_images = []
         for image in images:
@@ -244,8 +249,8 @@ class DistributionMatching():
         out = out.flatten()
         return out 
     
-    def DM(self, T_x, T_y, S_x, S_y,):
-        Schange_class_index = torch.argmax(S_y).item()
+    def Generate(self, T_x, T_y,):
+        Schange_class_index = torch.argmax(self.S_y).item()
         Tchange_class_index = torch.argmax(T_y).item()
         for k in range(self.k):
             self.model._init_weights()
@@ -255,14 +260,14 @@ class DistributionMatching():
                 if c == 0:
                     T_DataX = torch.tensor(T_x[:Tchange_class_index])
                     T_DataY = torch.tensor(T_y[:Tchange_class_index])
-                    S_DataX = torch.tensor(S_x[:Schange_class_index])
-                    S_DataY = torch.tensor(S_y[:Schange_class_index])
+                    S_DataX = torch.tensor(self.S_x[:Schange_class_index])
+                    S_DataY = torch.tensor(self.S_y[:Schange_class_index])
                     
                 else:
                     T_DataX = torch.tensor(T_x[Tchange_class_index:])
                     T_DataY = torch.tensor(T_y[Tchange_class_index:])
-                    S_DataX = torch.tensor(S_x[Schange_class_index:])
-                    S_DataY = torch.tensor(S_y[Schange_class_index:])
+                    S_DataX = torch.tensor(self.S_x[Schange_class_index:])
+                    S_DataY = torch.tensor(self.S_y[Schange_class_index:])
                 print('Sampling...')
                 T_BatchX = self.sampleRandom(T_DataX, batch_size = batch_size)
                 T_BatchY = self.sampleRandom(T_DataY, batch_size = batch_size)
@@ -288,9 +293,9 @@ class DistributionMatching():
 dataset = 'Alzheimer_MRI'
 datatype     = ''
 costumLabel  = 'Test'
-andrea = False
+andrea = True 
 if andrea:
-    os.chdir('/Users/andreamoody/Documents/GitHub/DC-MasterThesis-2023')
+    os.chdir(r"C:\Users\andre\Documents\GitHub\DC-MasterThesis-2023")
 else:
     os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
 batch_size   = 64
@@ -310,23 +315,39 @@ train_Loader = torch.utils.data.DataLoader(train_Set,
 
 model = M.ConvNet()#M.CD_temp()
 print('\nStaring Condensation...\n')
-GM = GradientMatching(model
-                        , batchSize = 64
-                        , syntheticSampleSize = 400
-                        , k = 1000
-                        , t = 50
+#GM = GradientMatching(model
+#                        , batchSize = 64
+#                        , syntheticSampleSize = 400
+#                        , k = 1000
+#                        , t = 50
+#                        , c = 2
+#                        , lr_Theta = 0.01
+#                        , lr_S = 0.1
+#                        , loss_Fun = nn.BCEWithLogitsLoss()
+#                        , DataSet = dataset
+#                        , customLabel = costumLabel)
+
+DM = DistributionMatching(model
+                        , batchSize = 8
+                        , syntheticSampleSize = 200
+                        , k = 200
                         , c = 2
-                        , lr_Theta = 0.01
-                        , lr_S = 0.1
+                        #, lr_Theta = 0.01
+                        , lr_S = 1e-3
                         , loss_Fun = nn.BCEWithLogitsLoss()
                         , DataSet = dataset
                         , customLabel = costumLabel)
 
-x, y, d = GM.Generate(xTrain, yTrain)
-GM.save_output()
+#x, y, d = GM.Generate(xTrain, yTrain)
+#GM.save_output()
+
+x = DM.Generate(xTrain, yTrain)
+#DM.save_output()
+
 x = x.cpu().detach().numpy()
-plt.plot(range(len(d)), d)
-plt.show()
+#plt.plot(range(len(d)), d)
+#plt.show()
+
 
 #print(y[0])
 #plt.imshow(x[0][0], cmap = 'gray')

@@ -10,8 +10,8 @@ import plotly.express as px
 from torchvision import models
 from carbontracker import parser
 
-os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
-
+#os.chdir('/home/thire399/Documents/School/To_Server')#'#DC-MasterThesis-2023')
+os.chdir('/home/Documents/School/To_Server')
 ####### PARAMETERS #######
 
 #model = models.densenet169(pretrained = False)
@@ -34,12 +34,12 @@ model.fc = nn.Linear(in_features = 2048, out_features = 1, bias = True)
 #               , df = 16384) # binary classification = 1.
 
 #Data parameters
-synthetic = True
-dataSet      = 'Alzheimer_MRI'
-#dataSet      = 'chest_xray'
-datatype     = 'Test'
+synthetic = False
+#dataSet      = 'Alzheimer_MRI'
+dataSet      = 'chest_xray'
+datatype     = ''
 #'10PercentDistribution'
-costumLabel  = 'SyntheticMRI128x128'#
+costumLabel  = '800x800Full'#'SyntheticMRI128x128'#
 #costumLabel = '64x6410PercentDistribution'
 
 dev = False
@@ -60,6 +60,7 @@ figSave      = True
 ####### Main Calls ########
 
 def __main__():
+        print('starting...')
         if synthetic:
             xTrain = torch.load(f'Data/Synthetic_{dataSet}/' + datatype + 'X.pt')
             yTrain = torch.load(f'Data/Synthetic_{dataSet}/' + datatype + 'Y.pt') 

@@ -19,17 +19,17 @@ os.chdir(directory)
 healthy_size = 1
 unhealthy_size = 3
 SampleRatio = 0.3 # procentage of the dataset.
-imgSize = (600, 600)
+imgSize = (800, 800)
 vira = False
 alzimers = False
-Chest_Xray = True
+Chest_Xray = False
 customLabel = '01Percent'
 #Dataset to create
-make_new_split = True
+make_new_split = False
 generateRandom = False
 generateDistriution = False
 Val = False # only for chest x_ray
-os.makedirs('Proccesed/chest_xray/train', exist_ok = True)
+os.makedirs(f'Proccesed/chest_xray/temp', exist_ok = True)
 #function to get all file names in the folder.
 def GetFileNames(path = 'None', isVira = False):
     try:
@@ -110,267 +110,329 @@ def DataPrep (class1, class2):
     y = torch.cat((nY, pY))
     return x, y
 
+#def transform(imgs):
+#
+#    return torch.tensor()
+class ChestXrayDataset(torch.utils.data.Dataset):
+    """Face Landmarks dataset."""
+
+    def __init__(self, files, root_dir, transform=None):
+        """
+        Arguments:
+            csv_file (string): Path to the csv file with annotations.
+            root_dir (string): Directory with all the images.
+            transform (callable, optional): Optional transform to be applied
+                on a sample.
+        """
+        self.files = files
+        #self.root_dir = root_dir
+        #self.transform = transform
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+        imagePaths = self.files[idx]
+        images = []
+        y = []
+        for i in range(len(imagePaths)):
+            if re.search('vira', imagePaths[i]) or re.search('bacteria', imagePaths[i]):
+                y.append(1)
+            else: y.append(0)
+            img = Image.open(imagePaths[i])
+            img = np.array(img.resize((800, 800)).convert('L')).astype(np.float32)/255
+            images.append(torch.unsqueeze(torch.from_numpy(img), 0))
+
+        
+        #if self.transform:
+        #    sample = self.transform(sample)
+        imagestensor = torch.stack(images)
+        y = torch.stack(y)
+        sample = {'images': imagestensor, 'y': y}
+        return sample
 
 ############ MAIN ##############
+def new():
+    os.makedirs('Proccesed/chest_xray/train')
+    os.makedirs('Proccesed/chest_xray/temporaryVal')
+    os.makedirs('Proccesed/chest_xray/Val')
+    #First get test train split.
+    print('Getting file names...')
+    normal = GetFileNames('UnProccesed/chest_xray/train/NORMAL')
+    ny = [0]*len(normal)
+    pneumonia = GetFileNames('UnProccesed/chest_xray/train/PNEUMONIA')
+    pY = [1]*len(pneumonia)
+    allInOneX = normal + pneumonia
+    allInOneY = ny + pY
 
+    X_train, X_tempVal, y_train, y_tempVal = train_test_split(allInOneX
+                                                              , allInOneY
+                                                              , test_size = 0.3
+                                                              , random_state=1)
+    MoveFiles(X_train, )
+    return None
 
-# ----- Train data (RANDOM SELECTION) -----
-if Chest_Xray:
-    if make_new_split:
-        print('Cerating a new training split...')
-        normal = GetFileNames('UnProccesed/chest_xray/train/NORMAL')
-        newNormal, valNormalTensor = split(normal)
-        normalTensor = SaveToTensor(newNormal, 600, 600)
-        torch.save(normalTensor, f = 'Proccesed/chest_xray/train/Splitnormal.pt')
-        del normal
-        del newNormal
-        del normalTensor
-        gc.collect()
-        pneumonia = GetFileNames('UnProccesed/chest_xray/train/PNEUMONIA')
-        newPneumonia, valPneumoniaTensor = split(pneumonia)
-        pneumoniaTensor = SaveToTensor(newPneumonia, 600, 600)
-        torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/train/Splitpneumonia.pt')
-        del pneumonia
-        del newPneumonia
-        del pneumoniaTensor
-        gc.collect
-        x, y = DataPrep('Proccesed/chest_xray/train/Splitnormal.pt', 'Proccesed/chest_xray/train/Splitpneumonia.pt')
-        #x = ReadFromTensor(x, imgSize[0], imgSize[1], readfromFile = False)
-        torch.save(x, f = 'Proccesed/chest_xray/trainX.pt')
-        torch.save(y, f = 'Proccesed/chest_xray/trainY.pt')
-        del x
-        del y
-        gc.collect()
-        print('Validation data...')
+def _main_():
+    # ----- Train data (RANDOM SELECTION) -----
+    if Chest_Xray:
+        if make_new_split:
+            print('Cerating a new training split...')
+            normal = GetFileNames('UnProccesed/chest_xray/temp/NORMAL')
+            newNormal, valNormalTensor = split(normal)
+            normalTensor = SaveToTensor(newNormal, 800, 800)
+            torch.save(normalTensor, f = 'Proccesed/chest_xray/temp/Splitnormal.pt')
+            del normal
+            del newNormal
+            del normalTensor
+            gc.collect()
+            pneumonia = GetFileNames('UnProccesed/chest_xray/temp/PNEUMONIA')
+            newPneumonia, valPneumoniaTensor = split(pneumonia)
+            pneumoniaTensor = SaveToTensor(newPneumonia, 800, 800)
+            torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/temp/Splitpneumonia.pt')
+            del pneumonia
+            del newPneumonia
+            del pneumoniaTensor
+            gc.collect
+            x, y = DataPrep('Proccesed/chest_xray/temp/Splitnormal.pt', 'Proccesed/chest_xray/temp/Splitpneumonia.pt')
+            #x = ReadFromTensor(x, imgSize[0], imgSize[1], readfromFile = False)
+            torch.save(x, f = 'Proccesed/chest_xray/trainX.pt')
+            torch.save(y, f = 'Proccesed/chest_xray/trainY.pt')
+            del x
+            del y
+            gc.collect()
+            print('Validation data...')
+            
+            valNormalTensor = SaveToTensor(valNormalTensor, imgSize[0], imgSize[1])
+            valPneumoniaTensor = SaveToTensor(valPneumoniaTensor, imgSize[0], imgSize[1])
+
+            torch.save(valNormalTensor, f = 'Proccesed/chest_xray/temp/tempNormalValX.pt')
+            torch.save(valPneumoniaTensor, f = 'Proccesed/chest_xray/temp/tempPneumoniaValX.pt')
+            x, y = DataPrep('Proccesed/chest_xray/temp/tempNormalValX.pt', 'Proccesed/chest_xray/temp/tempPneumoniaValX.pt')
+            torch.save(x, f = 'Proccesed/chest_xray/tempValX.pt')
+            torch.save(y, f = 'Proccesed/chest_xray/tempValY.pt')
+            print('Created a new data split.')
+            if (os.path.isfile('Proccesed/chest_xray/valX.pt') == False) and (os.path.isfile('Proccesed/chest_xray/valY.pt') == False) or Val:
+                print('Generating Original Validation set...')
+                normal = GetFileNames('UnProccesed/chest_xray/Valtemp/NORMAL')
+                normalTensor = SaveToTensor(normal, imgSize[0], imgSize[1])
+                os.makedirs('Proccesed/chest_xray/Valtemp', exist_ok = True)
+                torch.save(normalTensor, f = 'Proccesed/chest_xray/Valtemp/valnormal.pt')
+
+                pneumonia = GetFileNames('UnProccesed/chest_xray/Valtemp/PNEUMONIA')
+                pneumoniaTensor = SaveToTensor(pneumonia, imgSize[0], imgSize[1])
+                torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/Valtemp/valpneumonia.pt')
+                x, y = DataPrep('Proccesed/chest_xray/Valtemp/valnormal.pt', 'Proccesed/chest_xray/Valtemp/valpneumonia.pt')
+                torch.save(x, f = 'Proccesed/chest_xray/valX.pt')
+                torch.save(y, f = 'Proccesed/chest_xray/valY.pt')
+                print('Generated Original Validation set')
+
+        if generateRandom == True:
+            print('Generating random...')
+            X = torch.load('Proccesed/chest_xray/temp/Splitnormal.pt')
+            #X = ReadFromTensor(X, imgSize[0], imgSize[1], readfromFile= False)
+            #Y = torch.load('Proccesed/chest_xray/trainY.pt')
+            Y = torch.from_numpy(np.asarray([0]*X.shape[0]))
+            NormalRandX, NormalRandY = CS.RandomSelection(X, Y, k = healthy_size)
+            #Unhealthy
+            X = torch.load('Proccesed/chest_xray/temp/Splitpneumonia.pt')
+            #X = ReadFromTensor(X, imgSize[0], imgSize[1], readfromFile= False)
+            #Y = torch.load('Proccesed/chest_xray/trainY.pt')
+            Y = torch.from_numpy(np.asarray([1]*X.shape[0]))
+            pneumoniaRandX, pneumoniaRandY = CS.RandomSelection(X, Y, k = unhealthy_size)
+            RandX = torch.cat((NormalRandX, pneumoniaRandX))
+            RandY = torch.cat((NormalRandY, pneumoniaRandY))
+            torch.save(RandX, f'Proccesed/chest_xray/{customLabel}RandomtrainX.pt')
+            torch.save(RandY, f'Proccesed/chest_xray/{customLabel}RandomtrainY.pt')
+            del pneumoniaRandX
+            del pneumoniaRandY
+            del NormalRandX
+            del NormalRandY
+            del X
+            del Y
+            gc.collect()
+            if (os.path.isfile('Proccesed/chest_xray/valX.pt') == False) and (os.path.isfile('Proccesed/chest_xray/valY.pt') == False):
+                print('Generating Original Validation set...')
+                normal = GetFileNames('UnProccesed/chest_xray/Valtemp/NORMAL')
+                normalTensor = SaveToTensor(normal, imgSize[0], imgSize[1])
+                os.makedirs('Proccesed/chest_xray/Valtemp', exist_ok = True)
+                torch.save(normalTensor, f = 'Proccesed/chest_xray/Valtemp/valnormal.pt')
+
+                pneumonia = GetFileNames('UnProccesed/chest_xray/Valtemp/PNEUMONIA')
+                pneumoniaTensor = SaveToTensor(pneumonia, imgSize[0], imgSize[1])
+                torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/Valtemp/valpneumonia.pt')
+                x, y = DataPrep('Proccesed/chest_xray/Valtemp/valnormal.pt', 'Proccesed/chest_xray/Valtemp/valpneumonia.pt')
+                torch.save(x, f = 'Proccesed/chest_xray/valX.pt')
+                torch.save(y, f = 'Proccesed/chest_xray/valY.pt')
+                print('Generated Original Validation set')
+            print('Made Random selection dataset')      
+
+        if generateDistriution == True:
+            print('\n\nStarting coreset selection distribution.')
+            ## making coreset selection based on destribution
+            #prep the labels for normal tensor
+            print('Non-sick images...')
+            normal = torch.load('Proccesed/chest_xray/temp/Splitnormal.pt')
+            normalFeatures = CS.featureExtract(normal)
+            #normal = ReadFromTensor('Proccesed/chest_xray/temp/Splitnormal.pt',
+            #                             imgSize[0], imgSize[1])
+            normalDistribution = CS.getKNearest(normalFeatures, normal, healthy_size)
+            del normal
+            del normalFeatures
+            gc.collect()
+            torch.save(normalDistribution, f = 'Proccesed/chest_xray/temp/normalDistribution.pt')
+            del normalDistribution
+            gc.collect()
+
+            ## making coreset selection based on destribution
+            #prep the labels for pneumonia tensor
+            print('Sick images...')
+            pneumonia = torch.load('Proccesed/chest_xray/temp/Splitpneumonia.pt')
+            pneumoniaFeatures = CS.featureExtract(pneumonia)
+            gc.collect()
+            #pneumonia = ReadFromTensor('Proccesed/chest_xray/temp/Splitpneumonia.pt',
+            #                        imgSize[0], imgSize[1])
+            pneumoniaDistribution = CS.getKNearest(pneumoniaFeatures, pneumonia, unhealthy_size)
+            torch.save(pneumoniaDistribution , f = 'Proccesed/chest_xray/temp/pneumoniaDistribution.pt')
+            del pneumoniaFeatures
+            del pneumoniaDistribution
+            gc.collect()
+            print('Saving tensor...')
+            x, y = DataPrep('Proccesed/chest_xray/temp/normalDistribution.pt', 'Proccesed/chest_xray/temp/pneumoniaDistribution.pt')
+            torch.save(x, f = f'Proccesed/chest_xray/{customLabel}DistributiontrainX.pt')
+            torch.save(y, f = f'Proccesed/chest_xray/{customLabel}DistributiontrainY.pt')
+            print('Done.')
+            del x
+            del y
+            gc.collect()
+            #ValData
+            if (os.path.isfile('Proccesed/chest_xray/valX.pt') == False) and (os.path.isfile('Proccesed/chest_xray/valY.pt') == False):
+                print('Generating Original Validation set...')
+                print('\nRegenerating validation data...')
+                normal = GetFileNames('UnProccesed/chest_xray/Valtemp/NORMAL')
+                normalTensor = SaveToTensor(normal, imgSize[0], imgSize[1])
+                os.makedirs('Proccesed/chest_xray/Valtemp', exist_ok = True)
+                torch.save(normalTensor, f = 'Proccesed/chest_xray/Valtemp/valnormal.pt')
+
+                pneumonia = GetFileNames('UnProccesed/chest_xray/Valtemp/PNEUMONIA')
+                pneumoniaTensor = SaveToTensor(pneumonia, imgSize[0], imgSize[1])
+                torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/Valtemp/valpneumonia.pt')
+                x, y = DataPrep('Proccesed/chest_xray/Valtemp/valnormal.pt', 'Proccesed/chest_xray/Valtemp/valpneumonia.pt')
+                torch.save(x, f = 'Proccesed/chest_xray/valX.pt')
+                torch.save(y, f = 'Proccesed/chest_xray/valY.pt')
+
+    if alzimers == True:
         
-        valNormalTensor = SaveToTensor(valNormalTensor, imgSize[0], imgSize[1])
-        valPneumoniaTensor = SaveToTensor(valPneumoniaTensor, imgSize[0], imgSize[1])
+        if make_new_split:
+            print('Creating Full data set...')
+            os.makedirs('Proccesed/Alzheimer_MRI/temp', exist_ok = True)
+            print('Getting healty images...')
+            normal = GetFileNames('UnProccesed/Alzheimer_MRI/Non_Demented')
+            newNormal, testNormal = split(normal, TrainingSampleSize = 0.9)
+            newNormal, valNormal = split(newNormal)
+            normalTensor = SaveToTensor(newNormal, reshape = False)
+            valnormalTensor = SaveToTensor(valNormal, reshape = False)
+            testnormalTensor = SaveToTensor(testNormal, reshape = False)
+            torch.save(normalTensor, f = 'Proccesed/Alzheimer_MRI/temp/SplitTrainnormal.pt')
+            torch.save(valnormalTensor, f = 'Proccesed/Alzheimer_MRI/temp/SplitValnormal.pt')
+            torch.save(testnormalTensor, f = 'Proccesed/Alzheimer_MRI/temp/SplitTestnormal.pt')
+            del normal # clean up step
+            del newNormal
+            del normalTensor
+            del valnormalTensor
+            del testnormalTensor
+            gc.collect()
+            print('Getting Sick images...')
+            Moderate = GetFileNames('UnProccesed/Alzheimer_MRI/Moderate_Demented')
+            Mild = GetFileNames('UnProccesed/Alzheimer_MRI/Mild_Demented')
+            VeryMild = GetFileNames('UnProccesed/Alzheimer_MRI/Very_Mild_Demented')
+            Demented = Moderate + Mild + VeryMild
+            newDemented, testDemented = split(Demented, TrainingSampleSize = 0.9)
+            newDemented, valDemented = split(newDemented)
+            DementedTensor = SaveToTensor(newDemented, reshape = False)
+            valDementedTensor = SaveToTensor(valDemented, reshape = False)
+            testDementedTensor = SaveToTensor(testDemented, reshape = False)
+            torch.save(DementedTensor, f = 'Proccesed/Alzheimer_MRI/temp/SplitTrainDemented.pt')
+            torch.save(valDementedTensor, f = 'Proccesed/Alzheimer_MRI/temp/SplitValDemented.pt')
+            torch.save(testDementedTensor, f = 'Proccesed/Alzheimer_MRI/temp/SplitTestDemented.pt')
+            del Demented # clean up step
+            del newDemented
+            del DementedTensor
+            del valDementedTensor
+            del testDementedTensor
+            gc.collect()
+            print('Saving Tensors to: "Proccesed/Alzheimer_MRI/"')
+            x, y = DataPrep('Proccesed/Alzheimer_MRI/temp/SplitTrainnormal.pt', 'Proccesed/Alzheimer_MRI/temp/SplitTrainDemented.pt')
+            torch.save(x, f = 'Proccesed/Alzheimer_MRI/trainX.pt')
+            torch.save(y, f = 'Proccesed/Alzheimer_MRI/trainY.pt')
 
-        torch.save(valNormalTensor, f = 'Proccesed/chest_xray/train/tempNormalValX.pt')
-        torch.save(valPneumoniaTensor, f = 'Proccesed/chest_xray/train/tempPneumoniaValX.pt')
-        x, y = DataPrep('Proccesed/chest_xray/train/tempNormalValX.pt', 'Proccesed/chest_xray/train/tempPneumoniaValX.pt')
-        torch.save(x, f = 'Proccesed/chest_xray/tempValX.pt')
-        torch.save(y, f = 'Proccesed/chest_xray/tempValY.pt')
-        print('Created a new data split.')
-        if (os.path.isfile('Proccesed/chest_xray/valX.pt') == False) and (os.path.isfile('Proccesed/chest_xray/valY.pt') == False) or Val:
-            print('Generating Original Validation set...')
-            normal = GetFileNames('UnProccesed/chest_xray/val/NORMAL')
-            normalTensor = SaveToTensor(normal, imgSize[0], imgSize[1])
-            os.makedirs('Proccesed/chest_xray/val', exist_ok = True)
-            torch.save(normalTensor, f = 'Proccesed/chest_xray/val/valnormal.pt')
+            x, y = DataPrep('Proccesed/Alzheimer_MRI/temp/SplitValnormal.pt', 'Proccesed/Alzheimer_MRI/temp/SplitValDemented.pt')
+            torch.save(x, f = 'Proccesed/Alzheimer_MRI/ValX.pt')
+            torch.save(y, f = 'Proccesed/Alzheimer_MRI/ValY.pt')
 
-            pneumonia = GetFileNames('UnProccesed/chest_xray/val/PNEUMONIA')
-            pneumoniaTensor = SaveToTensor(pneumonia, imgSize[0], imgSize[1])
-            torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/val/valpneumonia.pt')
-            x, y = DataPrep('Proccesed/chest_xray/val/valnormal.pt', 'Proccesed/chest_xray/val/valpneumonia.pt')
-            torch.save(x, f = 'Proccesed/chest_xray/valX.pt')
-            torch.save(y, f = 'Proccesed/chest_xray/valY.pt')
-            print('Generated Original Validation set')
+            x, y = DataPrep('Proccesed/Alzheimer_MRI/temp/SplitTestnormal.pt', 'Proccesed/Alzheimer_MRI/temp/SplitTestDemented.pt')
+            torch.save(x, f = 'Proccesed/Alzheimer_MRI/testX.pt')
+            torch.save(y, f = 'Proccesed/Alzheimer_MRI/testY.pt')
+            print('Made full dataset')
 
-    if generateRandom == True:
-        print('Generating random...')
-        X = torch.load('Proccesed/chest_xray/train/Splitnormal.pt')
-        #X = ReadFromTensor(X, imgSize[0], imgSize[1], readfromFile= False)
-        #Y = torch.load('Proccesed/chest_xray/trainY.pt')
-        Y = torch.from_numpy(np.asarray([0]*X.shape[0]))
-        NormalRandX, NormalRandY = CS.RandomSelection(X, Y, k = healthy_size)
-        #Unhealthy
-        X = torch.load('Proccesed/chest_xray/train/Splitpneumonia.pt')
-        #X = ReadFromTensor(X, imgSize[0], imgSize[1], readfromFile= False)
-        #Y = torch.load('Proccesed/chest_xray/trainY.pt')
-        Y = torch.from_numpy(np.asarray([1]*X.shape[0]))
-        pneumoniaRandX, pneumoniaRandY = CS.RandomSelection(X, Y, k = unhealthy_size)
-        RandX = torch.cat((NormalRandX, pneumoniaRandX))
-        RandY = torch.cat((NormalRandY, pneumoniaRandY))
-        torch.save(RandX, f'Proccesed/chest_xray/{customLabel}RandomtrainX.pt')
-        torch.save(RandY, f'Proccesed/chest_xray/{customLabel}RandomtrainY.pt')
-        del pneumoniaRandX
-        del pneumoniaRandY
-        del NormalRandX
-        del NormalRandY
-        del X
-        del Y
-        gc.collect()
-        if (os.path.isfile('Proccesed/chest_xray/valX.pt') == False) and (os.path.isfile('Proccesed/chest_xray/valY.pt') == False):
-            print('Generating Original Validation set...')
-            normal = GetFileNames('UnProccesed/chest_xray/val/NORMAL')
-            normalTensor = SaveToTensor(normal, imgSize[0], imgSize[1])
-            os.makedirs('Proccesed/chest_xray/val', exist_ok = True)
-            torch.save(normalTensor, f = 'Proccesed/chest_xray/val/valnormal.pt')
+        if generateRandom == True:
+            print('Creating Random data set...')
+            os.makedirs('Proccesed/Alzheimer_MRI/temp', exist_ok = True)
+            print('Getting healty images...')
+            NormalX = torch.load('Proccesed/Alzheimer_MRI/temp/SplitTrainnormal.pt')
+            NormalY = torch.from_numpy(np.asarray([0]*NormalX.shape[0]))
+            NormalRandX, NormalRandY = CS.RandomSelection(NormalX, NormalY, k = int(np.rint(NormalX.shape[0] * SampleRatio)))
+            #torch.save(NormalRandX, f = 'Proccesed/Alzheimer_MRI/temp/RandomTrainNormal.pt')
+            DementedX = torch.load('Proccesed/Alzheimer_MRI/temp/SplitTrainDemented.pt')
+            DementedY = torch.from_numpy(np.asarray([1]*DementedX.shape[0]))
+            DementedRandX, DementedRandY = CS.RandomSelection(DementedX, DementedY, k = int(np.rint(DementedX.shape[0] * SampleRatio)))        
+            RandX = torch.cat((NormalRandX, DementedRandX))
+            RandY = torch.cat((NormalRandY, DementedRandY))
+            torch.save(RandX, f = f'Proccesed/Alzheimer_MRI/{customLabel}RandomtrainX.pt')
+            torch.save(RandY, f = f'Proccesed/Alzheimer_MRI/{customLabel}RandomtrainY.pt')
+            del NormalX
+            del NormalY
+            del NormalRandX
+            del NormalRandY
+            del DementedX
+            del DementedY
+            del DementedRandX
+            del DementedRandY
+            del RandX
+            del RandY
+            gc.collect()
+            print('Made Random selection dataset')      
 
-            pneumonia = GetFileNames('UnProccesed/chest_xray/val/PNEUMONIA')
-            pneumoniaTensor = SaveToTensor(pneumonia, imgSize[0], imgSize[1])
-            torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/val/valpneumonia.pt')
-            x, y = DataPrep('Proccesed/chest_xray/val/valnormal.pt', 'Proccesed/chest_xray/val/valpneumonia.pt')
-            torch.save(x, f = 'Proccesed/chest_xray/valX.pt')
-            torch.save(y, f = 'Proccesed/chest_xray/valY.pt')
-            print('Generated Original Validation set')
-        print('Made Random selection dataset')      
-
-    if generateDistriution == True:
-        print('\n\nStarting coreset selection distribution.')
-        ## making coreset selection based on destribution
-        #prep the labels for normal tensor
-        print('Non-sick images...')
-        normal = torch.load('Proccesed/chest_xray/train/Splitnormal.pt')
-        normalFeatures = CS.featureExtract(normal)
-        #normal = ReadFromTensor('Proccesed/chest_xray/train/Splitnormal.pt',
-        #                             imgSize[0], imgSize[1])
-        normalDistribution = CS.getKNearest(normalFeatures, normal, healthy_size)
-        del normal
-        del normalFeatures
-        gc.collect()
-        torch.save(normalDistribution, f = 'Proccesed/chest_xray/train/normalDistribution.pt')
-        del normalDistribution
-        gc.collect()
-
-        ## making coreset selection based on destribution
-        #prep the labels for pneumonia tensor
-        print('Sick images...')
-        pneumonia = torch.load('Proccesed/chest_xray/train/Splitpneumonia.pt')
-        pneumoniaFeatures = CS.featureExtract(pneumonia)
-        gc.collect()
-        #pneumonia = ReadFromTensor('Proccesed/chest_xray/train/Splitpneumonia.pt',
-        #                        imgSize[0], imgSize[1])
-        pneumoniaDistribution = CS.getKNearest(pneumoniaFeatures, pneumonia, unhealthy_size)
-        torch.save(pneumoniaDistribution , f = 'Proccesed/chest_xray/train/pneumoniaDistribution.pt')
-        del pneumoniaFeatures
-        del pneumoniaDistribution
-        gc.collect()
-        print('Saving tensor...')
-        x, y = DataPrep('Proccesed/chest_xray/train/normalDistribution.pt', 'Proccesed/chest_xray/train/pneumoniaDistribution.pt')
-        torch.save(x, f = f'Proccesed/chest_xray/{customLabel}DistributiontrainX.pt')
-        torch.save(y, f = f'Proccesed/chest_xray/{customLabel}DistributiontrainY.pt')
-        print('Done.')
-        del x
-        del y
-        gc.collect()
-        #ValData
-        if (os.path.isfile('Proccesed/chest_xray/valX.pt') == False) and (os.path.isfile('Proccesed/chest_xray/valY.pt') == False):
-            print('Generating Original Validation set...')
-            print('\nRegenerating validation data...')
-            normal = GetFileNames('UnProccesed/chest_xray/val/NORMAL')
-            normalTensor = SaveToTensor(normal, imgSize[0], imgSize[1])
-            os.makedirs('Proccesed/chest_xray/val', exist_ok = True)
-            torch.save(normalTensor, f = 'Proccesed/chest_xray/val/valnormal.pt')
-
-            pneumonia = GetFileNames('UnProccesed/chest_xray/val/PNEUMONIA')
-            pneumoniaTensor = SaveToTensor(pneumonia, imgSize[0], imgSize[1])
-            torch.save(pneumoniaTensor, f = 'Proccesed/chest_xray/val/valpneumonia.pt')
-            x, y = DataPrep('Proccesed/chest_xray/val/valnormal.pt', 'Proccesed/chest_xray/val/valpneumonia.pt')
-            torch.save(x, f = 'Proccesed/chest_xray/valX.pt')
-            torch.save(y, f = 'Proccesed/chest_xray/valY.pt')
-
-if alzimers == True:
-    
-    if make_new_split:
-        print('Creating Full data set...')
-        os.makedirs('Proccesed/Alzheimer_MRI/train', exist_ok = True)
-        print('Getting healty images...')
-        normal = GetFileNames('UnProccesed/Alzheimer_MRI/Non_Demented')
-        newNormal, testNormal = split(normal, TrainingSampleSize = 0.9)
-        newNormal, valNormal = split(newNormal)
-        normalTensor = SaveToTensor(newNormal, reshape = False)
-        valnormalTensor = SaveToTensor(valNormal, reshape = False)
-        testnormalTensor = SaveToTensor(testNormal, reshape = False)
-        torch.save(normalTensor, f = 'Proccesed/Alzheimer_MRI/train/SplitTrainnormal.pt')
-        torch.save(valnormalTensor, f = 'Proccesed/Alzheimer_MRI/train/SplitValnormal.pt')
-        torch.save(testnormalTensor, f = 'Proccesed/Alzheimer_MRI/train/SplitTestnormal.pt')
-        del normal # clean up step
-        del newNormal
-        del normalTensor
-        del valnormalTensor
-        del testnormalTensor
-        gc.collect()
-        print('Getting Sick images...')
-        Moderate = GetFileNames('UnProccesed/Alzheimer_MRI/Moderate_Demented')
-        Mild = GetFileNames('UnProccesed/Alzheimer_MRI/Mild_Demented')
-        VeryMild = GetFileNames('UnProccesed/Alzheimer_MRI/Very_Mild_Demented')
-        Demented = Moderate + Mild + VeryMild
-        newDemented, testDemented = split(Demented, TrainingSampleSize = 0.9)
-        newDemented, valDemented = split(newDemented)
-        DementedTensor = SaveToTensor(newDemented, reshape = False)
-        valDementedTensor = SaveToTensor(valDemented, reshape = False)
-        testDementedTensor = SaveToTensor(testDemented, reshape = False)
-        torch.save(DementedTensor, f = 'Proccesed/Alzheimer_MRI/train/SplitTrainDemented.pt')
-        torch.save(valDementedTensor, f = 'Proccesed/Alzheimer_MRI/train/SplitValDemented.pt')
-        torch.save(testDementedTensor, f = 'Proccesed/Alzheimer_MRI/train/SplitTestDemented.pt')
-        del Demented # clean up step
-        del newDemented
-        del DementedTensor
-        del valDementedTensor
-        del testDementedTensor
-        gc.collect()
-        print('Saving Tensors to: "Proccesed/Alzheimer_MRI/"')
-        x, y = DataPrep('Proccesed/Alzheimer_MRI/train/SplitTrainnormal.pt', 'Proccesed/Alzheimer_MRI/train/SplitTrainDemented.pt')
-        torch.save(x, f = 'Proccesed/Alzheimer_MRI/trainX.pt')
-        torch.save(y, f = 'Proccesed/Alzheimer_MRI/trainY.pt')
-
-        x, y = DataPrep('Proccesed/Alzheimer_MRI/train/SplitValnormal.pt', 'Proccesed/Alzheimer_MRI/train/SplitValDemented.pt')
-        torch.save(x, f = 'Proccesed/Alzheimer_MRI/ValX.pt')
-        torch.save(y, f = 'Proccesed/Alzheimer_MRI/ValY.pt')
-
-        x, y = DataPrep('Proccesed/Alzheimer_MRI/train/SplitTestnormal.pt', 'Proccesed/Alzheimer_MRI/train/SplitTestDemented.pt')
-        torch.save(x, f = 'Proccesed/Alzheimer_MRI/testX.pt')
-        torch.save(y, f = 'Proccesed/Alzheimer_MRI/testY.pt')
-        print('Made full dataset')
-
-    if generateRandom == True:
-        print('Creating Random data set...')
-        os.makedirs('Proccesed/Alzheimer_MRI/train', exist_ok = True)
-        print('Getting healty images...')
-        NormalX = torch.load('Proccesed/Alzheimer_MRI/train/SplitTrainnormal.pt')
-        NormalY = torch.from_numpy(np.asarray([0]*NormalX.shape[0]))
-        NormalRandX, NormalRandY = CS.RandomSelection(NormalX, NormalY, k = int(np.rint(NormalX.shape[0] * SampleRatio)))
-        #torch.save(NormalRandX, f = 'Proccesed/Alzheimer_MRI/train/RandomTrainNormal.pt')
-        DementedX = torch.load('Proccesed/Alzheimer_MRI/train/SplitTrainDemented.pt')
-        DementedY = torch.from_numpy(np.asarray([1]*DementedX.shape[0]))
-        DementedRandX, DementedRandY = CS.RandomSelection(DementedX, DementedY, k = int(np.rint(DementedX.shape[0] * SampleRatio)))        
-        RandX = torch.cat((NormalRandX, DementedRandX))
-        RandY = torch.cat((NormalRandY, DementedRandY))
-        torch.save(RandX, f = f'Proccesed/Alzheimer_MRI/{customLabel}RandomtrainX.pt')
-        torch.save(RandY, f = f'Proccesed/Alzheimer_MRI/{customLabel}RandomtrainY.pt')
-        del NormalX
-        del NormalY
-        del NormalRandX
-        del NormalRandY
-        del DementedX
-        del DementedY
-        del DementedRandX
-        del DementedRandY
-        del RandX
-        del RandY
-        gc.collect()
-        print('Made Random selection dataset')      
-
-    if generateDistriution:
-        print('\n\nStarting coreset selection distribution.')
-        ## making coreset selection based on destribution
-        #prep the labels for normal tensor
-        print('Creating Random data set...')
-        os.makedirs('Proccesed/Alzheimer_MRI/train', exist_ok = True)
-        print('Getting healty images...')
-        NormalX = torch.load('Proccesed/Alzheimer_MRI/train/SplitTrainnormal.pt')
-        normalFeatures = CS.featureExtract(NormalX)
-        normalDistribution = CS.getKNearest(normalFeatures, NormalX, k = int(np.rint(NormalX.shape[0] * SampleRatio)))
-        torch.save(normalDistribution, f = 'Proccesed/Alzheimer_MRI/train/normalDistribution.pt')
-        del NormalX
-        del normalFeatures
-        del normalDistribution
-        gc.collect()
-        print('Getting Sick images...')
-        DementedX = torch.load('Proccesed/Alzheimer_MRI/train/SplitTrainDemented.pt')
-        DementedFeatures = CS.featureExtract(DementedX)
-        DementedDistribution = CS.getKNearest(DementedFeatures, DementedX, int(np.rint(DementedX.shape[0] * SampleRatio)))
-        torch.save(DementedDistribution, f = 'Proccesed/Alzheimer_MRI/train/DementedDistribution.pt')
-        del DementedX
-        del DementedFeatures
-        del DementedDistribution
-        gc.collect()
-        print('Generating final tensor...')
-        X, Y = DataPrep('Proccesed/Alzheimer_MRI/train/normalDistribution.pt', 'Proccesed/Alzheimer_MRI/train/DementedDistribution.pt')
-        torch.save(X, f = f'Proccesed/Alzheimer_MRI/{customLabel}DistributiontrainX.pt')
-        torch.save(Y, f = f'Proccesed/Alzheimer_MRI/{customLabel}DistributiontrainY.pt')
-        print('Done. -> Proccesed/Alzheimer_MRI/')
-    if generateRandom == False and generateDistriution == False:
-        print('No Version Choosen -> Nothing made')
+        if generateDistriution:
+            print('\n\nStarting coreset selection distribution.')
+            ## making coreset selection based on destribution
+            #prep the labels for normal tensor
+            print('Creating Random data set...')
+            os.makedirs('Proccesed/Alzheimer_MRI/temp', exist_ok = True)
+            print('Getting healty images...')
+            NormalX = torch.load('Proccesed/Alzheimer_MRI/temp/SplitTrainnormal.pt')
+            normalFeatures = CS.featureExtract(NormalX)
+            normalDistribution = CS.getKNearest(normalFeatures, NormalX, k = int(np.rint(NormalX.shape[0] * SampleRatio)))
+            torch.save(normalDistribution, f = 'Proccesed/Alzheimer_MRI/temp/normalDistribution.pt')
+            del NormalX
+            del normalFeatures
+            del normalDistribution
+            gc.collect()
+            print('Getting Sick images...')
+            DementedX = torch.load('Proccesed/Alzheimer_MRI/temp/SplitTrainDemented.pt')
+            DementedFeatures = CS.featureExtract(DementedX)
+            DementedDistribution = CS.getKNearest(DementedFeatures, DementedX, int(np.rint(DementedX.shape[0] * SampleRatio)))
+            torch.save(DementedDistribution, f = 'Proccesed/Alzheimer_MRI/temp/DementedDistribution.pt')
+            del DementedX
+            del DementedFeatures
+            del DementedDistribution
+            gc.collect()
+            print('Generating final tensor...')
+            X, Y = DataPrep('Proccesed/Alzheimer_MRI/temp/normalDistribution.pt', 'Proccesed/Alzheimer_MRI/temp/DementedDistribution.pt')
+            torch.save(X, f = f'Proccesed/Alzheimer_MRI/{customLabel}DistributiontrainX.pt')
+            torch.save(Y, f = f'Proccesed/Alzheimer_MRI/{customLabel}DistributiontrainY.pt')
+            print('Done. -> Proccesed/Alzheimer_MRI/')
+        if generateRandom == False and generateDistriution == False:
+            print('No Version Choosen -> Nothing made')
+    return None

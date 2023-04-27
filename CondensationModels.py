@@ -298,7 +298,7 @@ if andrea:
     os.chdir(r"C:\Users\andre\Documents\GitHub\DC-MasterThesis-2023")
 else:
     os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
-batch_size   = 16
+batch_size   = 32
 ####### PARAMETERS #######
 print('preparing training data...')
 #Train data
@@ -328,7 +328,7 @@ print('\nStaring Condensation...\n')
 #                        , customLabel = costumLabel)
 
 DM = DistributionMatching(model
-                        , batchSize = 16
+                        , batchSize = 32
                         , syntheticSampleSize = 200
                         , k = 200
                         , c = 2

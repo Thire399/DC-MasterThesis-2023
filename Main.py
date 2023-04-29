@@ -10,8 +10,8 @@ import plotly.express as px
 from torchvision import models
 from carbontracker import parser
 
-#os.chdir('/home/thire399/Documents/School/To_Server')#'#DC-MasterThesis-2023')
-os.chdir('/home/Documents/School/To_Server')
+os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
+#os.chdir('/home/Documents/School/To_Server')
 ####### PARAMETERS #######
 
 #model = models.densenet169(pretrained = False)
@@ -52,9 +52,10 @@ learningRate = 1e-3
 optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.9)
 #optimizer    =  optim.Adam(model.parameters(), lr = learningRate)
 loss_Fun     = nn.BCEWithLogitsLoss()
-batch_size   = 32
+batch_size   = 5
 saveModel    = True
 figSave      = True
+highRes      = True
 ####### PARAMETERS #######
 
 ####### Main Calls ########
@@ -64,31 +65,52 @@ def __main__():
         if synthetic:
             xTrain = torch.load(f'Data/Synthetic_{dataSet}/' + datatype + 'X.pt')
             yTrain = torch.load(f'Data/Synthetic_{dataSet}/' + datatype + 'Y.pt') 
+        if highRes:
+            import Data_processing as DP
+            print('High resulotion...\nGetting file names...')
+            files = DP.GetFileNames('Data/Proccesed/chest_xray/train/')
+            train_set = DP.ChestXrayDataset(files = files)
+            train_Loader = torch.utils.data.DataLoader(train_set,
+                                                    batch_size = batch_size,
+                                                    shuffle = True,
+                                                    num_workers = 0)
+
         else:
             xTrain = torch.load('Data/Proccesed/'+ dataSet +'/' + datatype + 'trainX.pt')
             yTrain = torch.load('Data/Proccesed/'+ dataSet +'/' + datatype + 'trainY.pt')
             xTrain = xTrain.repeat(1, 3, 1, 1) # only for pretrained model
         if dataSet == 'chest_xray':
-            xVal = torch.load('Data/Proccesed/'+ dataSet + '/tempValX.pt')
-            yVal = torch.load('Data/Proccesed/'+ dataSet + '/tempValY.pt')
-            xVal = xVal.repeat(1, 3, 1, 1)     # only for pretrained model
+            if not highRes:
+                xVal = torch.load('Data/Proccesed/'+ dataSet + '/tempValX.pt')
+                yVal = torch.load('Data/Proccesed/'+ dataSet + '/tempValY.pt')
+                xVal = xVal.repeat(1, 3, 1, 1)     # only for pretrained model
+            else:
+                files = DP.GetFileNames('Data/Proccesed/chest_xray/temporaryVal/')
+                val_Set = DP.ChestXrayDataset(files = files)
+                val_Loader = torch.utils.data.DataLoader(val_Set,
+                                                        batch_size = batch_size,
+                                                        shuffle = True,
+                                                        num_workers = 0)
+                 
         else:
             xVal = torch.load('Data/Proccesed/'+ dataSet + '/ValX.pt')
             yVal = torch.load('Data/Proccesed/'+ dataSet + '/ValY.pt')
             xVal = xVal.repeat(1, 3, 1, 1)     # only for pretrained model
         
-        train_Set = torch.utils.data.TensorDataset(xTrain, yTrain)
-        train_Loader = torch.utils.data.DataLoader(train_Set,
-                                                batch_size = batch_size,
-                                                shuffle = True,
-                                                num_workers = 0)
+        if not highRes:
+            train_Set = torch.utils.data.TensorDataset(xTrain, yTrain)
+            train_Loader = torch.utils.data.DataLoader(train_Set,
+                                                    batch_size = batch_size,
+                                                    shuffle = True,
+                                                    num_workers = 0)
 
-        val_Set = torch.utils.data.TensorDataset(xVal, yVal)
-        val_Loader = torch.utils.data.DataLoader(val_Set,
-                                                batch_size = batch_size,
-                                                shuffle = True,
-                                                num_workers = 0)
+            val_Set = torch.utils.data.TensorDataset(xVal, yVal)
+            val_Loader = torch.utils.data.DataLoader(val_Set,
+                                                    batch_size = batch_size,
+                                                    shuffle = True,
+                                                    num_workers = 0)
 
+             
         # p = prediction, t = target
         Loop.TrainLoop(train_Loader = train_Loader
                 , val_Loader = val_Loader

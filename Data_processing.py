@@ -2,6 +2,7 @@
 import numpy as np
 import os 
 import shutil
+import shutil
 import torch
 import CoreSet_Selection as CS
 import gc
@@ -11,25 +12,6 @@ import torchvision.transforms as T
 from sklearn.model_selection import train_test_split
 import random
 # Change for your own file path. Should only need to change this path. all other paths should be fine as is.!!
-
-# TODO: update function description to standard.
-# TODO: update to be a function call in some other document, that takes all these parameters
-directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'
-os.chdir(directory)
-healthy_size = 1
-unhealthy_size = 3
-SampleRatio = 0.3 # procentage of the dataset.
-imgSize = (800, 800)
-vira = False
-alzimers = False
-Chest_Xray = False
-customLabel = '01Percent'
-#Dataset to create
-make_new_split = False
-generateRandom = False
-generateDistriution = False
-Val = False # only for chest x_ray
-os.makedirs(f'Proccesed/chest_xray/temp', exist_ok = True)
 #function to get all file names in the folder.
 def GetFileNames(path = 'None', isVira = False):
     try:
@@ -43,13 +25,13 @@ def GetFileNames(path = 'None', isVira = False):
 def MoveFiles(fileNames, source, destination):
     # Note copy has odd behaviour. - Depricated -> Now using "SaveToTensor"
     #Removes all content in folder first
-    for f in os.listdir(destination):
-        os.remove(os.path.join(destination, f))
+#    for f in os.listdir(destination):
+#        os.remove(os.path.join(destination, f))
     # copys the files in the original folder to the new folder
     for f in fileNames:
         src_path = os.path.join(source, f)
         dst_path = os.path.join(destination, f)
-        shutil.copy(src_path, dst_path)
+        shutil.copy(f, destination)
     print('moved all files to "{0}"'.format(destination))
     return None
 
@@ -116,7 +98,7 @@ def DataPrep (class1, class2):
 class ChestXrayDataset(torch.utils.data.Dataset):
     """Face Landmarks dataset."""
 
-    def __init__(self, files, root_dir, transform=None):
+    def __init__(self, files, root_dir = None, transform=None):
         """
         Arguments:
             csv_file (string): Path to the csv file with annotations.
@@ -135,46 +117,73 @@ class ChestXrayDataset(torch.utils.data.Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
         imagePaths = self.files[idx]
-        images = []
-        y = []
-        for i in range(len(imagePaths)):
-            if re.search('vira', imagePaths[i]) or re.search('bacteria', imagePaths[i]):
-                y.append(1)
-            else: y.append(0)
-            img = Image.open(imagePaths[i])
-            img = np.array(img.resize((800, 800)).convert('L')).astype(np.float32)/255
-            images.append(torch.unsqueeze(torch.from_numpy(img), 0))
-
-        
-        #if self.transform:
-        #    sample = self.transform(sample)
-        imagestensor = torch.stack(images)
-        y = torch.stack(y)
-        sample = {'images': imagestensor, 'y': y}
-        return sample
+        if re.search('virus', imagePaths) or re.search('bacteria', imagePaths):
+            y = 1
+        else: y = 0
+        img = Image.open(imagePaths)
+        img = np.array(img.resize((800, 800)).convert('L')).astype(np.float32)/255
+        image = torch.unsqueeze(torch.from_numpy(img), 0)
+        image = image.repeat(3, 1, 1)
+        y = torch.tensor(y)
+        return (image, y)
 
 ############ MAIN ##############
 def new():
-    os.makedirs('Proccesed/chest_xray/train')
-    os.makedirs('Proccesed/chest_xray/temporaryVal')
-    os.makedirs('Proccesed/chest_xray/Val')
+    try:
+        shutil.rmtree('Proccesed/chest_xray/train') #Removes Folder 
+        shutil.rmtree('Proccesed/chest_xray/temporaryVal')
+    except:
+        os.makedirs('Proccesed/chest_xray/train', exist_ok= True) #Creates Folder
+        os.makedirs('Proccesed/chest_xray/temporaryVal',exist_ok= True)
+    os.makedirs('Proccesed/chest_xray/train', exist_ok= True) #Creates Folder
+    os.makedirs('Proccesed/chest_xray/temporaryVal',exist_ok= True)
+    os.makedirs('Proccesed/chest_xray/Val',exist_ok= True)
     #First get test train split.
     print('Getting file names...')
     normal = GetFileNames('UnProccesed/chest_xray/train/NORMAL')
     ny = [0]*len(normal)
     pneumonia = GetFileNames('UnProccesed/chest_xray/train/PNEUMONIA')
     pY = [1]*len(pneumonia)
-    allInOneX = normal + pneumonia
-    allInOneY = ny + pY
+    #allInOneX = normal + pneumonia
+    #allInOneY = ny + pY
 
-    X_train, X_tempVal, y_train, y_tempVal = train_test_split(allInOneX
-                                                              , allInOneY
+    X_n, X_tempValN, y_n, y_tempValN = train_test_split(normal
+                                                              , ny
                                                               , test_size = 0.3
                                                               , random_state=1)
-    MoveFiles(X_train, )
+    X_p, X_tempValP, y_p, y_tempValP = train_test_split(pneumonia
+                                                              , pY
+                                                              , test_size = 0.3
+                                                              , random_state=1)
+    MoveFiles(X_n, 'UnProccesed/chest_xray/train/NORMAL', 'Proccesed/chest_xray/train' )
+    MoveFiles(X_p, 'UnProccesed/chest_xray/train/PNEUMONIA', 'Proccesed/chest_xray/train')
+
+    MoveFiles(X_tempValN, 'UnProccesed/chest_xray/train/NORMAL', 'Proccesed/chest_xray/temporaryVal' )
+    MoveFiles(X_tempValP, 'UnProccesed/chest_xray/train/PNEUMONIA', 'Proccesed/chest_xray/temporaryVal')
+
     return None
 
+
 def _main_():
+    # TODO: update function description to standard.
+    # TODO: update to be a function call in some other document, that takes all these parameters
+    directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'
+    os.chdir(directory)
+    healthy_size = 1
+    unhealthy_size = 3
+    SampleRatio = 0.3 # procentage of the dataset.
+    imgSize = (800, 800)
+    vira = False
+    alzimers = False
+    Chest_Xray = False
+    customLabel = '01Percent'
+    #Dataset to create
+    make_new_split = False
+    generateRandom = False
+    generateDistriution = False
+    Val = False # only for chest x_ray
+    os.makedirs(f'Proccesed/chest_xray/temp', exist_ok = True)
+
     # ----- Train data (RANDOM SELECTION) -----
     if Chest_Xray:
         if make_new_split:

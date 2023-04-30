@@ -10,8 +10,12 @@ import plotly.express as px
 from torchvision import models
 from carbontracker import parser
 
-os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
-#os.chdir('/home/Documents/School/To_Server')
+#os.chdir('/home/datacond/Documents/School/To_Server')
+andrea = False
+if andrea:
+    os.chdir('/Users/andreamoody/Documents/GitHub/DC-MasterThesis-2023')
+else:
+    os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
 ####### PARAMETERS #######
 
 #model = models.densenet169(pretrained = False)

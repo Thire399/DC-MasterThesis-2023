@@ -7,12 +7,12 @@ import os
 os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
 
 dataSet = 'Alzheimer_MRI'
-customLabel = 'Test'
+customLabel = 'Before'
 x = torch.load(f'Data/Synthetic_{dataSet}/{customLabel}X.pt')
 y = torch.load(f'Data/Synthetic_{dataSet}/{customLabel}Y.pt')
 
-c0 = random.sample(range(0, 101), 5)
-c1 = random.sample(range(100, 201), 5)
+c0 = random.sample(range(0, 5), 5)
+c1 = random.sample(range(5, 10), 5)
 
 fig, ax = plt.subplots(2, 5, figsize = (20, 10))
 for i in range(5):
@@ -25,13 +25,12 @@ for i in range(5):
 plt.show()
 
 
-dataSet = 'Alzheimer_MRI'
-customLabel = 'Before'
+customLabel = 'After'
 x = torch.load(f'Data/Synthetic_{dataSet}/{customLabel}X.pt')
 y = torch.load(f'Data/Synthetic_{dataSet}/{customLabel}Y.pt')
 
-c0 = random.sample(range(0, 101), 5)
-c1 = random.sample(range(100, 201), 5)
+c0 = random.sample(range(0, 5), 5)
+c1 = random.sample(range(5, 10), 5)
 
 fig, ax = plt.subplots(2, 5, figsize = (20, 10))
 for i in range(5):
@@ -41,4 +40,5 @@ for i in range(5):
     ax[1][i].imshow(x.detach().numpy()[c1[i]][0], cmap = 'gray')
     ax[1][i].set_title(f'Image: {c1[i]}\n(class 1)')
     ax[1][i].axis('off')
+plt.savefig('temporary.png', bbox_inches = 'tight', dpi = 400)
 plt.show()

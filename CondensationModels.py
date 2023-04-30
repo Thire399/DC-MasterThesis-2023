@@ -341,7 +341,7 @@ print('\nStaring Condensation...\n')
 #GM = GradientMatching(model
 #                        , batchSize = 64
 #                        , syntheticSampleSize = 50
-#                        , k = 10
+#                        , k = 1000
 #                        , t = 50
 #                        , c = 2
 #                        , lr_Theta = 0.01

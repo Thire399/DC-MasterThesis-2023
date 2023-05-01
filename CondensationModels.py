@@ -96,9 +96,15 @@ class GradientMatching():
         Schange_class_index = torch.argmax(self.S_y).item()
         Tchange_class_index = torch.argmax(T_y).item()
         
-        torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/BeforeX.pt')
-        torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/BeforeY.pt')
+        torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMBeforeX.pt')
+        torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMBeforeY.pt')
         DistanceLst = []
+        ## Adding early stopping to speed up training.
+#        early_stopping = M.EarlyStopping( patience = 5,
+#                verbose = True,
+#                delta   = self.lr_S - 1e-1,
+#                path    =  '',
+#                saveModel = False)
         for k in range(self.k):
             print('init random weights...')
             self.model._init_weights()
@@ -157,19 +163,27 @@ class GradientMatching():
                     loss.backward(retain_graph = True)
                     self.optimizerT.step()
                     tempLossLst.append(loss.item())
-                    if batch % 2 == 0: #For printing
-                        print(4*' ', '===> Training (t): [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                                batch * len(data), len(S_loader.dataset),
-                                (100. * batch) / len(S_loader),
-                                np.mean(tempLossLst)))
+                    if printout:
+                        if batch % 2 == 0: #For printing
+                            print(4*' ', '===> Training (t): [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                                    batch * len(data), len(S_loader.dataset),
+                                    (100. * batch) / len(S_loader),
+                                    np.mean(tempLossLst)))
+                
                 self.S_x = nn.Tanh()(self.S_x)
                 #time.sleep(2)
                 self.carbonTracker.epoch_end()
-                
                 #temp = torch.sum(torch.eq(old, self.S_x))
                 #print(f'any change? (False = Yes!  True = No!):', temp == 9830400, f'is {temp}')
-                torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/IntermidiateX.pt')
-                torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/IntermidiateY.pt')
+                torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateX.pt')
+                torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateY.pt')
+ #               early_stopping(np.mean(tempLossLst), self.model)
+ #               
+ #               if early_stopping.early_stop:
+ #                   print("Early stopping")
+ #                   break
+ #               else:
+ #                   continue
         self.carbonTracker.stop()
                 
         return self.S_x, self.S_y, DistanceLst
@@ -315,7 +329,7 @@ class DistributionMatching():
 #dataSet      = 'chest_xray'
 dataset = 'Alzheimer_MRI'
 datatype     = ''
-costumLabel  = 'After'
+costumLabel  = 'GMAfter'
 andrea = False
 if andrea:
     os.chdir(r"C:\Users\andre\Documents\GitHub\DC-MasterThesis-2023")
@@ -336,38 +350,38 @@ train_Loader = torch.utils.data.DataLoader(train_Set,
                                         num_workers = 0)
 
 
-#model = M.ConvNet()#M.CD_temp()
+model = M.ConvNet()
 print('\nStaring Condensation...\n')
-#GM = GradientMatching(model
-#                        , batchSize = 64
-#                        , syntheticSampleSize = 50
-#                        , k = 1000
-#                        , t = 50
-#                        , c = 2
-#                        , lr_Theta = 0.01
-#                        , lr_S = 0.1
-#                        , loss_Fun = nn.BCEWithLogitsLoss()
-#                        , DataSet = dataset
-#                        , customLabel = costumLabel)
-model = M.ConvNet2(output_layer='avgpool')#M.CD_temp()
-DM = DistributionMatching(model
-                        , batchSize = 32
-                        , syntheticSampleSize = 200
-                        , k = 200
+GM = GradientMatching(model
+                        , batchSize = 64
+                        , syntheticSampleSize = 100
+                        , k = 10
+                        , t = 50
                         , c = 2
-                        #, lr_Theta = 0.01
-                        , lr_S = 1e-3
+                        , lr_Theta = 0.01
+                        , lr_S = 0.1
                         , loss_Fun = nn.BCEWithLogitsLoss()
                         , DataSet = dataset
                         , customLabel = costumLabel)
+#model = M.ConvNet2(output_layer='avgpool')#M.CD_temp()
+#DM = DistributionMatching(model
+#                        , batchSize = 32
+#                        , syntheticSampleSize = 200
+#                        , k = 200
+#                        , c = 2
+#                        #, lr_Theta = 0.01
+#                        , lr_S = 1e-3
+#                        , loss_Fun = nn.BCEWithLogitsLoss()
+#                        , DataSet = dataset
+#                        , customLabel = costumLabel)
+#
+x, y, d = GM.Generate(xTrain, yTrain)
+GM.save_output()
 
-#x, y, d = GM.Generate(xTrain, yTrain)
-#GM.save_output()
-
-x = DM.Generate(xTrain, yTrain)
+#x = DM.Generate(xTrain, yTrain)
 #DM.save_output()
 
-x = x.cpu().detach().numpy()
+#x = x.cpu().detach().numpy()
 #plt.plot(range(len(d)), d)
 #plt.show()
 

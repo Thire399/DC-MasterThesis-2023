@@ -8,8 +8,8 @@ os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
 
 dataSet = 'Alzheimer_MRI'
 customLabel = 'Before'
-x = torch.load(f'Data/Synthetic_{dataSet}/{customLabel}X.pt')
-y = torch.load(f'Data/Synthetic_{dataSet}/{customLabel}Y.pt')
+x = torch.load(f'Data/Synthetic_{dataSet}/GM{customLabel}X.pt')
+y = torch.load(f'Data/Synthetic_{dataSet}/GM{customLabel}Y.pt')
 
 c0 = random.sample(range(0, 5), 5)
 c1 = random.sample(range(5, 10), 5)
@@ -26,8 +26,8 @@ plt.show()
 
 
 customLabel = 'After'
-x = torch.load(f'Data/Synthetic_{dataSet}/{customLabel}X.pt')
-y = torch.load(f'Data/Synthetic_{dataSet}/{customLabel}Y.pt')
+x = torch.load(f'Data/Synthetic_{dataSet}/GM{customLabel}X.pt')
+y = torch.load(f'Data/Synthetic_{dataSet}/GM{customLabel}Y.pt')
 
 c0 = random.sample(range(0, 5), 5)
 c1 = random.sample(range(5, 10), 5)

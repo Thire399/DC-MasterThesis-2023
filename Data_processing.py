@@ -92,9 +92,9 @@ def DataPrep (class1, class2):
     y = torch.cat((nY, pY))
     return x, y
 
-#def transform(imgs):
-#
-#    return torch.tensor()
+
+
+################## USED TO LOAD FULL DATA ################################
 class ChestXrayDataset(torch.utils.data.Dataset):
     """Face Landmarks dataset."""
 
@@ -127,8 +127,108 @@ class ChestXrayDataset(torch.utils.data.Dataset):
         y = torch.tensor(y)
         return (image, y)
 
-############ MAIN ##############
+def last_4chars(x):
+    return(x.split('/')[-1].split('_')[0].split('person')[-1])
+
+def ID(x):
+    return x.split('/')[-1].split('NORMAL2-')[-1].split('-')[1]
+
+def Uniques(files):
+    new_unique_list = []
+    checkings = []
+    old = ''
+    os.makedirs('Proccesed/chest_xray/Unique/train', exist_ok= True) #Creates Folder
+    os.makedirs('Proccesed/chest_xray/Unique/temporaryVal',exist_ok= True)
+    if re.search('virus', i) or re.search('bacteria', i):
+        sorted_Files = sorted(files, key = last_4chars)   
+        for i in sorted_Files:
+                current = i[39:].split('_')
+                if old != current[0:2]:
+                    new_unique_list.append(i)
+                else:
+                    pass
+                old = current[0:2]
+    else:
+        sorted_Files = sorted(files, key = ID)
+        for i in sorted_Files:
+            temp = i.split('/')[-1].split('NORMAL2-')[-1].split('-')[1]
+            if temp in checkings:
+                pass
+            else:
+                checkings.append(temp)
+                new_unique_list.append(i)
+
+
+def getSingles():
+    directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'
+    os.chdir(directory)
+    try:
+        shutil.rmtree('Proccesed/chest_xray/Unique/train', exist_ok= True) #Creaes Folder 
+        shutil.rmtree('Proccesed/chest_xray/Unique/temporaryVal',exist_ok= True)
+    except:
+        os.makedirs('Proccesed/chest_xray/Unique/train', exist_ok= True) #Creates Folder
+        os.makedirs('Proccesed/chest_xray/Unique/temporaryVal',exist_ok= True)
+    os.makedirs('Proccesed/chest_xray/Unique/train', exist_ok= True) #Creates Folder
+    os.makedirs('Proccesed/chest_xray/Unique/temporaryVal',exist_ok= True)
+    def last_4chars(x):
+        return int(x.split('/')[-1].split('_')[0].split('person')[-1])
+
+    def ID(x):
+        return int(x.split('/')[-1].split('NORMAL2-')[-1].split('-')[1])
+
+    def Uniques(files):
+
+        new_unique_list = []
+        checkings = []
+        old = ''
+        if re.search('virus', files[0]) or re.search('bacteria', files[0]):
+            sorted_Files = sorted(files, key = last_4chars)   
+            for i in sorted_Files:
+                    current = i[39:].split('_')
+                    if old != current[0:2]:
+                        new_unique_list.append(i)
+                    else:
+                        pass
+                    old = current[0:2]
+        else:
+            sorted_Files = sorted(files, key = ID)
+            for i in sorted_Files:
+                temp = i.split('/')[-1].split('NORMAL2-')[-1].split('-')[1]
+                if temp in checkings:
+                    pass
+                else:
+                    checkings.append(temp)
+                    new_unique_list.append(i)
+        return new_unique_list
+    print('Getting file names...')
+    normal = GetFileNames('UnProccesed/chest_xray/train/NORMAL')
+    pneumonia = GetFileNames('UnProccesed/chest_xray/train/PNEUMONIA')
+    normalUniq = Uniques(normal)
+    pneumoniaUniq = Uniques(pneumonia)
+    ny = [0]*len(normalUniq)
+    pY = [1]*len(pneumoniaUniq)
+
+    X_n, X_tempValN, y_n, y_tempValN = train_test_split(normalUniq
+                                                              , ny
+                                                              , test_size = 0.3
+                                                              , random_state=1)
+    X_p, X_tempValP, y_p, y_tempValP = train_test_split(pneumoniaUniq
+                                                              , pY
+                                                              , test_size = 0.3
+                                                              , random_state=1)
+    MoveFiles(X_n, 'UnProccesed/chest_xray/train/NORMAL', 'Proccesed/chest_xray/Unique/train' )
+    MoveFiles(X_p, 'UnProccesed/chest_xray/train/PNEUMONIA', 'Proccesed/chest_xray/Unique/train')
+
+    MoveFiles(X_tempValN, 'UnProccesed/chest_xray/train/NORMAL', 'Proccesed/chest_xray/Unique/temporaryVal' )
+    MoveFiles(X_tempValP, 'UnProccesed/chest_xray/train/PNEUMONIA', 'Proccesed/chest_xray/Unique/temporaryVal')
+
+    return None
+
+getSingles()
+############ MAIN Tensor creation ##############
 def new():
+    directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'
+    os.chdir(directory)
     try:
         shutil.rmtree('Proccesed/chest_xray/train') #Removes Folder 
         shutil.rmtree('Proccesed/chest_xray/temporaryVal')

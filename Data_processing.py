@@ -224,7 +224,6 @@ def getSingles():
 
     return None
 
-getSingles()
 ############ MAIN Tensor creation ##############
 def new():
     directory = '/home/thire399/Documents/School/DC-MasterThesis-2023/Data'

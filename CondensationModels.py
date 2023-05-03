@@ -99,9 +99,15 @@ class GradientMatching():
         Schange_class_index = torch.argmax(self.S_y).item()
         Tchange_class_index = torch.argmax(T_y).item()
         
-        torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/BeforeX.pt')
-        torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/BeforeY.pt')
+        torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMBeforeX.pt')
+        torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMBeforeY.pt')
         DistanceLst = []
+        ## Adding early stopping to speed up training.
+#        early_stopping = M.EarlyStopping( patience = 5,
+#                verbose = True,
+#                delta   = self.lr_S - 1e-1,
+#                path    =  '',
+#                saveModel = False)
         for k in range(self.k):
             self.carbonTracker.epoch_start()
             print('init random weights...')
@@ -178,11 +184,13 @@ class GradientMatching():
                                     (100. * batch) / len(S_loader),
                                     np.mean(tempLossLst)))
                 
-                #self.S_x = self.sigmoid(self.S_x) #Replace tanh -> sigmoid? [0-1]
+
+                self.S_x = self.sigmoid(self.S_x) #Replace tanh -> sigmoid? [0-1]
 
                 torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateX.pt')
                 torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateY.pt')
             self.carbonTracker.epoch_end()
+
         self.carbonTracker.stop()
                 
         return self.S_x, self.S_y, DistanceLst
@@ -190,9 +198,11 @@ class GradientMatching():
 
 class DistributionMatching():
 
-    def __init__(self, model, k = 200, c = 2,  batchSize = 64, syntheticSampleSize = 200
-                 , loss_Fun = nn.BCEWithLogitsLoss(), lr_S = 1e-3):
-        self.model = model
+    def __init__(self, model, k:int, c:int,  batchSize:int, syntheticSampleSize :int
+                 ,loss_Fun, lr_S:float, lr_Theta:float , DataSet:str, customLabel:str) -> None:
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.model = model.to(self.device)
+        self.batch_size = batchSize
         self.k = k
         self.c = c
         self.savePath = f'Data/Synthetic_{DataSet}'
@@ -202,50 +212,16 @@ class DistributionMatching():
         self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 1, 128, 128)), requires_grad = True) #Totally random data
         self.S_y = Gen_Y(self.S_x.shape[0])
         self.loss_Fun = loss_Fun
-        self.optimizer = optim.SGD([self.S_x], lr = lr_S, momentum = 0.5)
-        self.carbonTracker = CarbonTracker(epochs = self.k*self.t, 
+        self.optimizerT = optim.SGD([self.S_x], lr = lr_Theta, momentum = 0.5)
+        self.optimizerS = optim.SGD([self.S_x], lr = lr_S, momentum = 0.5)
+        self.carbonTracker = CarbonTracker(epochs = self.k, 
                             log_dir = self.savePath + '/CarbonLogs',
                             log_file_prefix = costumLabel + model._get_name(),
                             monitor_epochs = -1,
                             update_interval = 0.01
                             )
-        print(f'Setup:\n\tUsing Compute: {self.device}\n\tk = {k}\n\tt = {t}\n\tc = {c}\n\tLearning Rate S: = {lr_S}')
-    def rotate_images(images):
-        rotated_images = []
-        for image in images:
-            # Convert tensor to PIL Image
-            pil_image = TF.to_pil_image(image)
-            # Rotate PIL Image
-            rotated_pil_image = TF.rotate(pil_image, 15)
-            # Convert rotated PIL Image back to tensor
-            rotated_image = TF.to_tensor(rotated_pil_image)
-            rotated_images.append(rotated_image)
-        return rotated_images
-
-    def flip_images(images):
-        flipped_images = []
-        for image in images:
-            # Convert tensor to PIL Image
-            pil_image = TF.to_pil_image(image)
-            # Flip PIL Image horizontally
-            flipped_pil_image = TF.hflip(pil_image)
-            # Convert flipped PIL Image back to tensor
-            flipped_image = TF.to_tensor(flipped_pil_image)
-            flipped_images.append(flipped_image)
-        return flipped_images
-
-    def brighten_images(images, brightness_factor):
-        brightened_images = []
-        for image in images:
-            # Convert tensor to PIL Image
-            pil_image = TF.to_pil_image(image)
-            # Brighten PIL Image
-            brightened_pil_image = TF.adjust_brightness(pil_image, brightness_factor)
-            # Convert brightened PIL Image back to tensor
-            brightened_image = TF.to_tensor(brightened_pil_image)
-            brightened_images.append(brightened_image)
-        return brightened_images
-
+        print(f'Setup:\n\tUsing Compute: {self.device}\n\tk = {k}\n \tc = {c}\n\tLearning Rate S: = {lr_S}',
+                            f'\tLearning Rate Theta = {lr_Theta}')
 
     def Empirical_mmd(X, Y, gamma):
         K_xx = rbf_kernel(X, X, gamma)
@@ -257,48 +233,87 @@ class DistributionMatching():
     def sampleRandom(self, data, batch_size):
         index = np.random.randint(data.shape[0], size = batch_size)
         return torch.stack([data[i] for i in index])
-    def ComputeGrad(self, x):
-        self.model.train()
-        out = self.model(x.to(self.device))
-        out = out.flatten()
-        return out 
     
+
+    def save_output(self, x = None, y = None) -> None:
+        print('Saving synthetic dataset...')
+        if x == None:
+            torch.save(self.S_x, f = f'{self.savePath}/{self.customLabel}X.pt')
+            torch.save(self.S_y, f = f'{self.savePath}/{self.customLabel}Y.pt')
+        else:
+            torch.save(x, f = f'{self.savePath}/{self.customLabel}X.pt')
+            torch.save(y, f = f'{self.savePath}/{self.customLabel}Y.pt')
+        print(f'Saved "{self.customLabel}" to "{self.savePath}"')
+        return None
+
     def Generate(self, T_x, T_y,):
         Schange_class_index = torch.argmax(self.S_y).item()
         Tchange_class_index = torch.argmax(T_y).item()
+        torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/DMBeforeX.pt')
+        torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/DMBeforeY.pt')
+        embed = self.model.module.avgpool if torch.cuda.device_count() > 1 else self.model.avgpool # for GPU parallel
+        self.model.to(self.device)
         for k in range(self.k):
+            #Sample paratameters for network. 
             self.model._init_weights()
-            Loss_Sum = 0
+            Loss_Sum = 0 #??? skal den være her? 
+            self.optimizerS.zero_grad()
+            self.optimizerT.zero_grad
+            self.carbonTracker.epoch_start()
+            if k % 5 == 0:
+                printout = True
+                print(f'K Iteration: {k}')
+            else: printout = False
             for c in range(self.c):
                 print('Create Mini Batches')
                 if c == 0:
-                    T_DataX = torch.tensor(T_x[:Tchange_class_index])
-                    T_DataY = torch.tensor(T_y[:Tchange_class_index])
-                    S_DataX = torch.tensor(S_x[:Schange_class_index])
-                    S_DataY = torch.tensor(S_y[:Schange_class_index])
-                    
+                    T_DataX = (T_x[:Tchange_class_index])
+                    T_DataY = (T_y[:Tchange_class_index])
+                    S_DataX = (self.S_x[:Schange_class_index])
+                    S_DataY = (self.S_y[:Schange_class_index])
+                    #sample w_c - omega for every class
                 else:
-                    T_DataX = torch.tensor(T_x[Tchange_class_index:])
-                    T_DataY = torch.tensor(T_y[Tchange_class_index:])
-                    S_DataX = torch.tensor(S_x[Schange_class_index:])
-                    S_DataY = torch.tensor(S_y[Schange_class_index:])
+                    T_DataX = (T_x[Tchange_class_index:])
+                    T_DataY = (T_y[Tchange_class_index:])
+                    S_DataX = (self.S_x[Schange_class_index:])
+                    S_DataY = (self.S_y[Schange_class_index:])
+                    #sample w_c - omega for every class
+                if printout:
+                        print(f'\t\tSampling for class {c}... ')
                 print('Sampling...')
-                T_BatchX = self.sampleRandom(T_DataX, batch_size = batch_size)
-                T_BatchY = self.sampleRandom(T_DataY, batch_size = batch_size)
-                S_BatchX = self.sampleRandom(S_DataX, batch_size = batch_size)                
-                S_BatchY = self.sampleRandom(S_DataY, batch_size = batch_size)
+                T_BatchX = self.sampleRandom(T_DataX, batch_size = self.batch_size)
+                T_BatchY = self.sampleRandom(T_DataY, batch_size = self.batch_size)
+                S_BatchX = self.sampleRandom(S_DataX, batch_size = self.batch_size)                
+                S_BatchY = self.sampleRandom(S_DataY, batch_size = self.batch_size)
                 
-                #add augmentation
-                T_out = self.ComputeGrad(T_BatchX)
-                S_out = self.ComputeGrad(S_BatchX)
-                temp_sum_T = torch.mean(T_out)
-                temp_sum_S = torch.mean(S_out) 
-                loss = torch.square(torch.abs(temp_sum_T - temp_sum_S))
+                #compute MDD and add augmentation
+                #T_out = self.Compute(T_BatchX)
+                #S_out = self.Compute(S_BatchX)
+                #print(T_BatchX[1][1])
+                #print(T_BatchX)
+
+                T_aug = TF.rotate(T_BatchX, 0.15)
+                S_aug = TF.rotate(S_BatchX, 0.15)
+                # get embeddings
+                T_embed = embed(T_aug)
+                S_embed = embed(S_aug)
+
+
+                # compute the loss
+                loss = torch.sum((torch.mean(T_embed, dim=0) - torch.mean(S_embed, dim=0))**2)
                 Loss_Sum += loss
+                self.optimizerS.step()
+
+            self.S_x = nn.Sigmoid()(self.S_x)
+            self.carbonTracker.epoch_end()
+            # backpropagation and weight update
+
             Loss_Sum.backward()
-            self.optimizer.step()
-                #old = S_BatchX
-        return self.S_x
+            self.optimizerT.step()            
+            torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/DMIntermidiateX.pt')
+            torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/DMIntermidiateY.pt')
+        self.carbonTracker.stop()
+        return self.S_x, self.S_y
 
 
 ####### PARAMETERS #######
@@ -306,7 +321,8 @@ class DistributionMatching():
 #dataSet      = 'chest_xray'
 dataset = 'Alzheimer_MRI'
 datatype     = ''
-costumLabel  = 'After'
+
+costumLabel  = 'GMAfter'
 andrea = False
 server = True
 if server:
@@ -315,7 +331,7 @@ elif andrea:
     os.chdir('/Users/andreamoody/Documents/GitHub/DC-MasterThesis-2023')
 else:
     os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
-batch_size   = 64
+batch_size   = 32
 ####### PARAMETERS #######
 print('preparing training data...')
 #Train data
@@ -329,7 +345,6 @@ train_Loader = torch.utils.data.DataLoader(train_Set,
                                         shuffle = True,
                                         num_workers = 4)
 
-model = M.ConvNet()#M.CD_temp()
 print('\nStaring Condensation...\n')
 model = M.ConvNet()
 GM = GradientMatching(model
@@ -337,6 +352,10 @@ GM = GradientMatching(model
                         , syntheticSampleSize = 402
                         , k = 1000
                         , syntheticSampleSize = 50
+=======
+GM = GradientMatching(model
+                        , batchSize = 64
+                        , syntheticSampleSize = 100
                         , k = 10
                         , t = 50
                         , c = 2
@@ -345,12 +364,28 @@ GM = GradientMatching(model
                         , loss_Fun = nn.BCEWithLogitsLoss()
                         , DataSet = dataset
                         , customLabel = costumLabel)
+model = M.ConvNet2(output_layer='avgpool')#M.CD_temp()
+#DM = DistributionMatching(model
+#                        , batchSize = 32
+#                        , syntheticSampleSize = 100
+#                        , k = 10
+#                        , c = 2
+#                        , lr_Theta = 0.01
+#                        , lr_S = 1
+#                        , loss_Fun = nn.BCEWithLogitsLoss()
+#                        , DataSet = dataset
+#                        , customLabel = costumLabel)
 
 x, y, d = GM.Generate(xTrain, yTrain)
 GM.save_output()
-x = x.cpu().detach().numpy()
-plt.plot(range(len(d)), d)
-plt.show()
+
+#x = DM.Generate(xTrain, yTrain)
+#DM.save_output()
+
+#x = x.cpu().detach().numpy()
+#plt.plot(range(len(d)), d)
+#plt.show()
+
 
 #print(y[0])
 #plt.imshow(x[0][0], cmap = 'gray')

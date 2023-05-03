@@ -162,6 +162,74 @@ class ConvNet(nn.Module):
 
 ##########################################################
 
+
+
+########## Condensation model from the paper 2 ##############
+
+class ConvNet2(nn.Module):
+    def __init__(self, num_classes=1, embedding_size = 32 ,output_layer=None,  dropout_prob=0.58):
+        super(ConvNet2, self).__init__()
+        self.conv1 = nn.Conv2d(3, 128, kernel_size=3, padding=1)
+        self.norm1 = nn.InstanceNorm2d(128)
+        self.relu1 = nn.ReLU(inplace=True)
+        self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
+        
+        self.conv2 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        self.norm2 = nn.InstanceNorm2d(128)
+        self.relu2 = nn.ReLU(inplace=True)
+        self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
+        
+        self.conv3 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        self.norm3 = nn.InstanceNorm2d(128)
+        self.relu3 = nn.ReLU(inplace=True)
+        self.pool3 = nn.AvgPool2d(kernel_size=2, stride=2)
+
+        self.avgpool = nn.AdaptiveAvgPool2d((3, 3))
+        #self.embedding = nn.Linear(128*3*3, num_classes)
+        self.fc = nn.Linear(embedding_size, num_classes)
+        self.output_layer = output_layer
+
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
+                nn.init.xavier_uniform_(m.weight)#, mean=0.0, std=0.01)
+                if hasattr(m, 'weight') and m.weight is not None:
+                    m.weight.requires_grad_(True)
+        return None
+    
+    def forward(self, x):
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.relu1(out)
+        out = self.pool1(out)
+        
+        out = self.conv2(out)
+        out = self.norm2(out)
+        out = self.relu2(out)
+        out = self.pool2(out)
+     
+        out = self.conv3(out)
+        out = self.norm3(out)
+        out = self.relu3(out)
+        out = self.pool3(out)
+
+        out = self.avgpool(out)
+        out = out.view(out.size(0), -1,1,1)
+
+        print(out[0].shape)
+        #out = self.embedding(out)
+        out = F.normalize(out, p=2, dim=1) # L2 normalization
+        print(out[0].shape)
+
+        if self.output_layer is None or self.output_layer == 'fc':
+            out = out.view(out.size(0), -1)
+            out = self.fc(out)
+        elif self.output_layer == 'avgpool':
+            out = nn.functional.adaptive_avg_pool2d(out, (1, 1))
+            out = out.view(out.size(0), -1)
+        return out
+
+
 ##################################### 
 ### Temp condensation model ###
 class CD_temp(nn.Module):

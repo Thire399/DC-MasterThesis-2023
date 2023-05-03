@@ -116,7 +116,7 @@ class ConvNet(nn.Module):
     def __init__(self, num_classes=1):
         super(ConvNet, self).__init__()
         
-        self.conv1 = nn.Conv2d(3, 128, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(1, 128, kernel_size=3, padding=1)
         self.norm1 = nn.InstanceNorm2d(128)
         self.relu1 = nn.ReLU(inplace=True)
         self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)

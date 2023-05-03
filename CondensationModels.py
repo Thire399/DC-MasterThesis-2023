@@ -102,12 +102,7 @@ class GradientMatching():
         torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMBeforeX.pt')
         torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMBeforeY.pt')
         DistanceLst = []
-        ## Adding early stopping to speed up training.
-#        early_stopping = M.EarlyStopping( patience = 5,
-#                verbose = True,
-#                delta   = self.lr_S - 1e-1,
-#                path    =  '',
-#                saveModel = False)
+
         for k in range(self.k):
             self.carbonTracker.epoch_start()
             print('init random weights...')
@@ -347,12 +342,6 @@ train_Loader = torch.utils.data.DataLoader(train_Set,
 
 print('\nStaring Condensation...\n')
 model = M.ConvNet()
-GM = GradientMatching(model
-                        , batchSize = 64
-                        , syntheticSampleSize = 402
-                        , k = 1000
-                        , syntheticSampleSize = 50
-=======
 GM = GradientMatching(model
                         , batchSize = 64
                         , syntheticSampleSize = 100

@@ -296,13 +296,14 @@ class DistributionMatching():
                 # compute the loss
                 loss = torch.sum((torch.mean(T_embed, dim=0) - torch.mean(S_embed, dim=0))**2)
                 Loss_Sum += loss
+                self.optimizerS.step()
 
             self.S_x = nn.Sigmoid()(self.S_x)
             self.carbonTracker.epoch_end()
             # backpropagation and weight update
-            self.optimizer.zero_grad()
+
             Loss_Sum.backward()
-            self.optimizer.step()            
+            self.optimizerT.step()            
             torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/DMIntermidiateX.pt')
             torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/DMIntermidiateY.pt')
         self.carbonTracker.stop()

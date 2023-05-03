@@ -17,7 +17,7 @@ Data/Proccesed/chest_xray/Distribution**
 Data/Proccesed/chest_xray/val/**
 Data/Loss_**
 Data/Proccesed/Alzheimer_MRI/**
-
+Data/Synthetic_Alzheimer_MRI/*
 
 .vscode
 # Unproccesed/**

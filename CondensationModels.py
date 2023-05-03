@@ -319,7 +319,7 @@ datatype     = ''
 
 costumLabel  = 'GMAfter'
 andrea = False
-server = True
+server = False
 if server:
     os.chdir("/home/datacond/Documents/school/To_Server")
 elif andrea:
@@ -344,8 +344,8 @@ print('\nStaring Condensation...\n')
 model = M.ConvNet()
 GM = GradientMatching(model
                         , batchSize = 64
-                        , syntheticSampleSize = 100
-                        , k = 10
+                        , syntheticSampleSize = 402
+                        , k = 1
                         , t = 50
                         , c = 2
                         , lr_Theta = 0.01

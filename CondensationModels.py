@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics.pairwise import rbf_kernel
 from carbontracker.tracker import CarbonTracker
-import time
+import gc
 
 
 warnings.filterwarnings("ignore")
@@ -37,17 +37,18 @@ class GradientMatching():
         os.makedirs(f'{self.savePath}/CarbonLogs', exist_ok = True)
         self.customLabel = customLabel
         self.lr_S = lr_S
-        self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 3, 128, 128)), requires_grad = True) #Totally random data
+        self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 1, 128, 128)), requires_grad = True) #Totally random data
         self.S_y = Gen_Y(self.S_x.shape[0])
         self.loss_Fun = loss_Fun
         self.optimizerT = optim.SGD(self.model.parameters(), lr = lr_Theta, momentum = 0.5)
         self.optimizerS = optim.SGD([self.S_x], lr = lr_S, momentum = 0.5)
-        self.carbonTracker = CarbonTracker(epochs = self.k*self.t, 
+        self.carbonTracker = CarbonTracker(epochs = self.k, 
                             log_dir = self.savePath + '/CarbonLogs',
-                            log_file_prefix = costumLabel + model._get_name(),
+                            log_file_prefix = costumLabel + self.model._get_name(),
                             monitor_epochs = -1,
                             update_interval = 1
                             )
+        self.sigmoid = nn.Sigmoid()
         print(f'Setup:\n\tUsing Compute: {self.device}\n\tk = {k}\n\tt = {t}\n\tc = {c}\n\tLearning Rate S: = {lr_S}',
                             f'\tLearning Rate Theta = {lr_Theta}')
 
@@ -66,7 +67,7 @@ class GradientMatching():
         return torch.stack([data[i] for i in index])
 
     def GetGradient(self, x, y):
-        self.model.train()
+        self.model.eval()
         out = self.model(x.to(self.device))
         out = out.flatten()
         loss = self.loss_Fun(out, y.type(torch.float32).to(self.device))
@@ -78,7 +79,9 @@ class GradientMatching():
             else:
                 if isinstance(l, nn.Linear) or isinstance(l, nn.Conv2d):
                     grad_list.append(l.weight.grad.flatten())
-        return grad_list, loss
+        del loss
+        gc.collect() # cleanup step. (Loss here not used)
+        return grad_list
 
     def save_output(self, x = None, y = None) -> None:
         print('Saving synthetic dataset...')
@@ -106,13 +109,12 @@ class GradientMatching():
 #                path    =  '',
 #                saveModel = False)
         for k in range(self.k):
+            self.carbonTracker.epoch_start()
             print('init random weights...')
             self.model._init_weights()
             for t in range(self.t):
-                
                 self.optimizerS.zero_grad()
                 self.optimizerT.zero_grad()
-                self.carbonTracker.epoch_start()
                 #old = self.S_x.clone()
                 if t % 5 == 0:
                     printout = True
@@ -138,15 +140,25 @@ class GradientMatching():
                     T_BatchY = self.sampleRandom(T_DataY, batch_size = self.batch_size)
                     S_BatchX = self.sampleRandom(S_DataX, batch_size = self.batch_size)                
                     S_BatchY = self.sampleRandom(S_DataY, batch_size = self.batch_size)
-                    
-                    #print(T_BatchX.shape)
-                    t_grad, loss = self.GetGradient(T_BatchX, T_BatchY)
-                    s_grad, loss = self.GetGradient(S_BatchX, S_BatchY)
+                    del T_DataX
+                    del T_DataY
+                    del S_DataX
+                    del S_DataY
+                    gc.collect() # clean up
+                    t_grad = self.GetGradient(T_BatchX, T_BatchY)
+                    s_grad = self.GetGradient(S_BatchX, S_BatchY)
+                    del T_BatchX
+                    del T_BatchY
+                    del S_BatchY
+                    del S_BatchX
+                    gc.collect() # clean up
                     D = self.Distance(t_grad, s_grad)
                     D.backward()
                     DistanceLst.append(D.detach().cpu().numpy())
-                    #print('distance ', D)
                     self.optimizerS.step()
+                    del t_grad
+                    del s_grad
+                    gc.collect() # clean up
                 Whole_S = torch.utils.data.TensorDataset(self.S_x, self.S_y)
                 S_loader = torch.utils.data.DataLoader(Whole_S
                                                         , batch_size = batch_size
@@ -155,9 +167,11 @@ class GradientMatching():
                 tempLossLst = []
                 if printout:
                     print('Training on whole S...')
+                self.model.train()
+                # Training on whole S
                 for batch, (data, target) in enumerate(S_loader, 1):
                     self.optimizerT.zero_grad() # a clean up step for PyTorch
-                    out = model(data.type(torch.float32).to(self.device))
+                    out = self.model(data.type(torch.float32).to(self.device))
                     out = out.flatten()
                     loss = self.loss_Fun(out, (target).type(torch.float32).to(self.device))
                     loss.backward(retain_graph = True)
@@ -170,20 +184,13 @@ class GradientMatching():
                                     (100. * batch) / len(S_loader),
                                     np.mean(tempLossLst)))
                 
-                self.S_x = nn.Tanh()(self.S_x)
-                #time.sleep(2)
-                self.carbonTracker.epoch_end()
-                #temp = torch.sum(torch.eq(old, self.S_x))
-                #print(f'any change? (False = Yes!  True = No!):', temp == 9830400, f'is {temp}')
+
+                self.S_x = self.sigmoid(self.S_x) #Replace tanh -> sigmoid? [0-1]
+
                 torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateX.pt')
                 torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateY.pt')
- #               early_stopping(np.mean(tempLossLst), self.model)
- #               
- #               if early_stopping.early_stop:
- #                   print("Early stopping")
- #                   break
- #               else:
- #                   continue
+            self.carbonTracker.epoch_end()
+
         self.carbonTracker.stop()
                 
         return self.S_x, self.S_y, DistanceLst
@@ -198,12 +205,11 @@ class DistributionMatching():
         self.batch_size = batchSize
         self.k = k
         self.c = c
-        self.lr_Theta = lr_Theta
         self.savePath = f'Data/Synthetic_{DataSet}'
         os.makedirs(f'{self.savePath}/CarbonLogs', exist_ok = True)
         self.customLabel = customLabel
         self.lr_S = lr_S
-        self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 3, 128, 128)), requires_grad = True) #Totally random data
+        self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 1, 128, 128)), requires_grad = True) #Totally random data
         self.S_y = Gen_Y(self.S_x.shape[0])
         self.loss_Fun = loss_Fun
         self.optimizerT = optim.SGD([self.S_x], lr = lr_Theta, momentum = 0.5)
@@ -315,9 +321,13 @@ class DistributionMatching():
 #dataSet      = 'chest_xray'
 dataset = 'Alzheimer_MRI'
 datatype     = ''
-costumLabel  = 'DMAfter'
-andrea = True
-if andrea:
+
+costumLabel  = 'GMAfter'
+andrea = False
+server = True
+if server:
+    os.chdir("/home/datacond/Documents/school/To_Server")
+elif andrea:
     os.chdir('/Users/andreamoody/Documents/GitHub/DC-MasterThesis-2023')
 else:
     os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
@@ -327,45 +337,50 @@ print('preparing training data...')
 #Train data
 xTrain = torch.load(f'Data/Proccesed/{dataset}/trainX.pt')
 yTrain = torch.load(f'Data/Proccesed/{dataset}/trainY.pt')
-xTrain = xTrain.repeat(1, 3, 1, 1)
+#xTrain = xTrain.repeat(1, 3, 1, 1)
 
 train_Set = torch.utils.data.TensorDataset(xTrain, yTrain)
 train_Loader = torch.utils.data.DataLoader(train_Set,
                                         batch_size = batch_size,
                                         shuffle = True,
-                                        num_workers = 0)
+                                        num_workers = 4)
 
-
-#model = M.ConvNet()
 print('\nStaring Condensation...\n')
-#GM = GradientMatching(model
-#                        , batchSize = 64
-#                        , syntheticSampleSize = 100
-#                        , k = 10
-#                        , t = 50
-#                        , c = 2
-#                        , lr_Theta = 0.01
-#                        , lr_S = 0.1
-#                        , loss_Fun = nn.BCEWithLogitsLoss()
-#                        , DataSet = dataset
-#                        , customLabel = costumLabel)
-model = M.ConvNet2(output_layer='avgpool')#M.CD_temp()
-DM = DistributionMatching(model
-                        , batchSize = 32
+model = M.ConvNet()
+GM = GradientMatching(model
+                        , batchSize = 64
+                        , syntheticSampleSize = 402
+                        , k = 1000
+                        , syntheticSampleSize = 50
+=======
+GM = GradientMatching(model
+                        , batchSize = 64
                         , syntheticSampleSize = 100
                         , k = 10
+                        , t = 50
                         , c = 2
                         , lr_Theta = 0.01
-                        , lr_S = 1
+                        , lr_S = 0.1
                         , loss_Fun = nn.BCEWithLogitsLoss()
                         , DataSet = dataset
                         , customLabel = costumLabel)
+model = M.ConvNet2(output_layer='avgpool')#M.CD_temp()
+#DM = DistributionMatching(model
+#                        , batchSize = 32
+#                        , syntheticSampleSize = 100
+#                        , k = 10
+#                        , c = 2
+#                        , lr_Theta = 0.01
+#                        , lr_S = 1
+#                        , loss_Fun = nn.BCEWithLogitsLoss()
+#                        , DataSet = dataset
+#                        , customLabel = costumLabel)
 
-#x, y, d = GM.Generate(xTrain, yTrain)
-#GM.save_output()
+x, y, d = GM.Generate(xTrain, yTrain)
+GM.save_output()
 
-x = DM.Generate(xTrain, yTrain)
-DM.save_output()
+#x = DM.Generate(xTrain, yTrain)
+#DM.save_output()
 
 #x = x.cpu().detach().numpy()
 #plt.plot(range(len(d)), d)

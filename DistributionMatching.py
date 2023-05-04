@@ -167,8 +167,8 @@ print('\nStaring Condensation...\n')
 model = M.ConvNet()
 DM = DistributionMatching(model
                         , batchSize = 32
-                        , syntheticSampleSize = 100
-                        , k = 10
+                        , syntheticSampleSize = 100 #0,1% - 4, 1% - 40, 10% - 402
+                        , k = 20000
                         , c = 2
                         , lr_S = 1
                         , loss_Fun = nn.BCEWithLogitsLoss()

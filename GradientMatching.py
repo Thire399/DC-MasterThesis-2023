@@ -66,7 +66,7 @@ class GradientMatching():
         return torch.stack([data[i] for i in index])
 
     def GetGradient(self, x, y):
-        self.model.eval()
+        self.model.train()
         out = self.model(x.to(self.device))
         out = out.flatten()
         loss = self.loss_Fun(out, y.type(torch.float32).to(self.device))
@@ -109,7 +109,6 @@ class GradientMatching():
             for t in range(self.t):
                 self.optimizerS.zero_grad()
                 self.optimizerT.zero_grad()
-                #old = self.S_x.clone()
                 if t % 5 == 0:
                     printout = True
                     print(f'K Iteration: {k}\n\tT Iteration: {t}')
@@ -134,25 +133,13 @@ class GradientMatching():
                     T_BatchY = self.sampleRandom(T_DataY, batch_size = self.batch_size)
                     S_BatchX = self.sampleRandom(S_DataX, batch_size = self.batch_size)                
                     S_BatchY = self.sampleRandom(S_DataY, batch_size = self.batch_size)
-                    del T_DataX
-                    del T_DataY
-                    del S_DataX
-                    del S_DataY
-                    gc.collect() # clean up
                     t_grad = self.GetGradient(T_BatchX, T_BatchY)
                     s_grad = self.GetGradient(S_BatchX, S_BatchY)
-                    del T_BatchX
-                    del T_BatchY
-                    del S_BatchY
-                    del S_BatchX
-                    gc.collect() # clean up
                     D = self.Distance(t_grad, s_grad)
                     D.backward()
                     DistanceLst.append(D.detach().cpu().numpy())
                     self.optimizerS.step()
-                    del t_grad
-                    del s_grad
-                    gc.collect() # clean up
+
                 Whole_S = torch.utils.data.TensorDataset(self.S_x, self.S_y)
                 S_loader = torch.utils.data.DataLoader(Whole_S
                                                         , batch_size = batch_size
@@ -177,7 +164,8 @@ class GradientMatching():
                                     batch * len(data), len(S_loader.dataset),
                                     (100. * batch) / len(S_loader),
                                     np.mean(tempLossLst)))
-                with torch.no_grad(): self.S_x.sigmoid_()
+                with torch.no_grad():
+                    self.S_x.sigmoid_()
                 torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateX.pt')
                 torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateY.pt')
             self.carbonTracker.epoch_end()

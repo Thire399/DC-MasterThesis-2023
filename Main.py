@@ -1,12 +1,10 @@
 #Main
-import numpy as np
 import Loop
 import Models as M
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import os
-import plotly.express as px
 from torchvision import models
 from carbontracker import parser
 

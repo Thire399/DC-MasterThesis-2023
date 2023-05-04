@@ -140,25 +140,12 @@ class GradientMatching():
                     T_BatchY = self.sampleRandom(T_DataY, batch_size = self.batch_size)
                     S_BatchX = self.sampleRandom(S_DataX, batch_size = self.batch_size)                
                     S_BatchY = self.sampleRandom(S_DataY, batch_size = self.batch_size)
-                    #del T_DataX
-                    #del T_DataY
-                    #del S_DataX
-                    #del S_DataY
-                    #gc.collect() # clean up
                     t_grad = self.GetGradient(T_BatchX, T_BatchY)
                     s_grad = self.GetGradient(S_BatchX, S_BatchY)
-                    #del T_BatchX
-                    #del T_BatchY
-                    #del S_BatchY
-                    #del S_BatchX
-                    #gc.collect() # clean up
                     D = self.Distance(t_grad, s_grad)
                     D.backward()
                     DistanceLst.append(D.detach().cpu().numpy())
                     self.optimizerS.step()
-                    #del t_grad
-                    #del s_grad
-                    #gc.collect() # clean up
                 Whole_S = torch.utils.data.TensorDataset(self.S_x, self.S_y)
                 S_loader = torch.utils.data.DataLoader(Whole_S
                                                         , batch_size = self.batch_size
@@ -183,11 +170,6 @@ class GradientMatching():
                                     batch * len(data), len(S_loader.dataset),
                                     (100. * batch) / len(S_loader),
                                     np.mean(tempLossLst)))
-                del Whole_S
-                del S_loader
-                del loss
-                del tempLossLst
-                gc.collect()
                 with torch.no_grad(): self.S_x.sigmoid_() #Replace tanh -> sigmoid? [0-1]
                 torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateX.pt')
                 torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateY.pt')
@@ -351,12 +333,11 @@ train_Loader = torch.utils.data.DataLoader(train_Set,
                                         num_workers = 4)
 
 print('\nStaring Condensation...\n')
-<<<<<<< Updated upstream
 #model = M.ConvNet()
 #GM = GradientMatching(model
                         # , batchSize = 64
                         # , syntheticSampleSize = 402
-                        # , k = 1
+                        # , k = 10
                         # , t = 50
                         # , c = 2
                         # , lr_Theta = 0.01
@@ -369,14 +350,6 @@ DM = DistributionMatching(model
                         , batchSize = 32
                         , syntheticSampleSize = 100
                         , k = 10
-=======
-model = M.ConvNet()
-GM = GradientMatching(model
-                        , batchSize = 64
-                        , syntheticSampleSize = 402
-                        , k = 10
-                        , t = 50
->>>>>>> Stashed changes
                         , c = 2
                         , lr_Theta = 0.01
                         , lr_S = 1

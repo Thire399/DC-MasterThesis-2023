@@ -166,7 +166,7 @@ class ConvNet(nn.Module):
 ########## Condensation model from the paper 2 ##############
 
 class ConvNet2(nn.Module):
-    def __init__(self, num_classes=1, embedding_size = 32 ,output_layer=None,  dropout_prob=0.58):
+    def __init__(self, num_classes=1, embedding_size = 32):
         super(ConvNet2, self).__init__()
         self.conv1 = nn.Conv2d(1, 128, kernel_size=3, padding=1)
         self.norm1 = nn.InstanceNorm2d(128)
@@ -185,8 +185,7 @@ class ConvNet2(nn.Module):
 
         #self.avgpool = nn.AdaptiveAvgPool2d((3, 3))
         #self.embedding = nn.Linear(128*3*3, num_classes)
-        self.fc = nn.Linear(embedding_size, num_classes)
-        self.output_layer = output_layer
+        #self.fc = nn.Linear(embedding_size, num_classes)
 
     def _init_weights(self):
         for m in self.modules():
@@ -217,20 +216,13 @@ class ConvNet2(nn.Module):
         out = self.relu3(out)
         out = self.pool3(out)
 
-        out = self.avgpool(out)
-        out = out.view(out.size(0), -1,1,1)
-
-        print(out[0].shape)
+        #out = self.avgpool(out)
+        #out = out.view(out.size(0), -1,1,1)
         #out = self.embedding(out)
-        out = F.normalize(out, p=2, dim=1) # L2 normalization
-        print(out[0].shape)
-
-        if self.output_layer is None or self.output_layer == 'fc':
-            out = out.view(out.size(0), -1)
-            out = self.fc(out)
-        elif self.output_layer == 'avgpool':
-            out = nn.functional.adaptive_avg_pool2d(out, (1, 1))
-            out = out.view(out.size(0), -1)
+        #out = F.normalize(out, p=2, dim=1) # L2 normalization
+        #print(out[0].shape)
+        out = out.view(out.size(0), -1)
+        out = self.fc(out)
         return out
 
 

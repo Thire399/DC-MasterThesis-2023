@@ -203,16 +203,9 @@ andrea = False
 andreaDesk = True
 server = False
 desktopKev = False
-if server:
-    os.chdir("/home/datacond/Documents/school/To_Server")
-elif andrea:
-    os.chdir('/Users/andreamoody/Documents/GitHub/DC-MasterThesis-2023')
-elif andreaDesk:
-    os.chdir(r'C:\Users\andre\Documents\GitHub\DC-MasterThesis-2023')
-elif desktopKev:
-    os.chdir('/Users/thire/OneDrive/Dokumenter/Current_Semester/DC-MasterThesis-2023')
-else:
-    os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
+homeDir = os.getcwd()
+print(f'Running at "{homeDir}"...')
+os.chdir(homeDir)
 batch_size   = 32
 ####### PARAMETERS #######
 print('preparing training data...')

@@ -164,9 +164,9 @@ class ConvNet(nn.Module):
 
 
 ########## Condensation model from the paper 2 ##############
-
+############## bruger ikke ##################
 class ConvNet2(nn.Module):
-    def __init__(self, num_classes=1, embedding_size = 32):
+    def __init__(self, num_classes=1):
         super(ConvNet2, self).__init__()
         self.conv1 = nn.Conv2d(1, 128, kernel_size=3, padding=1)
         self.norm1 = nn.InstanceNorm2d(128)
@@ -185,7 +185,7 @@ class ConvNet2(nn.Module):
 
         #self.avgpool = nn.AdaptiveAvgPool2d((3, 3))
         #self.embedding = nn.Linear(128*3*3, num_classes)
-        #self.fc = nn.Linear(embedding_size, num_classes)
+        self.fc = nn.Linear(32768, num_classes)
 
     def _init_weights(self):
         for m in self.modules():
@@ -194,11 +194,6 @@ class ConvNet2(nn.Module):
                 if hasattr(m, 'weight') and m.weight is not None:
                     m.weight.requires_grad_(True)
         return None
-    
-    def embed(self, x):
-        out = self.features(x)
-        out = out.view(out.size(0), -1)
-        return out
     
     def forward(self, x):
         out = self.conv1(x)

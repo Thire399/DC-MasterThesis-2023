@@ -24,7 +24,7 @@ def Gen_Y(size):
 class DistributionMatching():
 
     def __init__(self, model, k:int, c:int,  batchSize:int, syntheticSampleSize :int
-                 ,loss_Fun, lr_S:float, lr_Theta:float , DataSet:str, customLabel:str) -> None:
+                 ,loss_Fun, lr_S:float , DataSet:str, customLabel:str) -> None:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
         self.batch_size = batchSize
@@ -37,7 +37,6 @@ class DistributionMatching():
         self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 1, 128, 128)), requires_grad = True) #Totally random data
         self.S_y = Gen_Y(self.S_x.shape[0])
         self.loss_Fun = loss_Fun
-        self.optimizerT = optim.SGD([self.S_x], lr = lr_Theta, momentum = 0.5)
         self.optimizerS = optim.SGD([self.S_x], lr = lr_S, momentum = 0.5)
         self.carbonTracker = CarbonTracker(epochs = self.k, 
                             log_dir = self.savePath + '/CarbonLogs',
@@ -45,11 +44,10 @@ class DistributionMatching():
                             monitor_epochs = -1,
                             update_interval = 0.01
                             )
-        print(f'Setup:\n\tUsing Compute: {self.device}\n\tk = {k}\n \tc = {c}\n\tLearning Rate S: = {lr_S}',
-                            f'\tLearning Rate Theta = {lr_Theta}')
+        print(f'Setup:\n\tUsing Compute: {self.device}\n\tk = {k}\n \tc = {c}\n\tLearning Rate S: = {lr_S}')
     
     def sampleRandom(self, data, batch_size):
-        index = np.random.randint(data.shape[0], size = batch_size)
+        index = np.random.randint(data.shape[0], size = int(batch_size/2))
         return torch.stack([data[i] for i in index])
 
     def save_output(self, x = None, y = None) -> None:
@@ -62,67 +60,81 @@ class DistributionMatching():
             torch.save(y, f = f'{self.savePath}/{self.customLabel}Y.pt')
         print(f'Saved "{self.customLabel}" to "{self.savePath}"')
         return None
+    
+    def aug_strategy(self, true_x, syn_x):
+        rand_nr = np.random.randint(1,3)
+        if rand_nr == 1:
+            T_aug = TF.rotate(true_x, 0.15)
+            S_aug = TF.rotate(syn_x, 0.15)
+        elif rand_nr == 2:
+            T_aug = torch.flip(true_x, [0, 1])
+            S_aug = torch.flip(syn_x, [0, 1])
+        else: 
+            T_aug = TF.adjust_brightness(true_x, 0,2)
+            S_aug = TF.adjust_brightness(syn_x, 0,2)
+        return T_aug, S_aug
+    
 
     def Generate(self, T_x, T_y,):
         Schange_class_index = torch.argmax(self.S_y).item()
         Tchange_class_index = torch.argmax(T_y).item()
         torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/DMBeforeX.pt')
         torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/DMBeforeY.pt')
-        embed = self.model.module.avgpool if torch.cuda.device_count() > 1 else self.model.avgpool # for GPU parallel
+        #embed = self.model.module.avgpool if torch.cuda.device_count() > 1 else self.model.avgpool # for GPU parallel
         self.model.to(self.device)
+        loss_avg = 0
+    
         for k in range(self.k):
+            self.carbonTracker.epoch_start()
             #Sample paratameters for network. 
             self.model._init_weights()
-            Loss_Sum = 0 #??? skal den være her? 
+            loss = 0 
             self.optimizerS.zero_grad()
-            self.optimizerT.zero_grad
-            self.carbonTracker.epoch_start()
+            images_real_all = []
+            images_syn_all = []
             if k % 5 == 0:
                 printout = True
                 print(f'K Iteration: {k}')
             else: printout = False
             for c in range(self.c):
-                print('Create Mini Batches')
+                if printout: 
+                    print('Create Mini Batches')
                 if c == 0:
                     T_DataX = (T_x[:Tchange_class_index])
-                    T_DataY = (T_y[:Tchange_class_index])
                     S_DataX = (self.S_x[:Schange_class_index])
-                    S_DataY = (self.S_y[:Schange_class_index])
                     #sample w_c - omega for every class
                 else:
                     T_DataX = (T_x[Tchange_class_index:])
-                    T_DataY = (T_y[Tchange_class_index:])
                     S_DataX = (self.S_x[Schange_class_index:])
-                    S_DataY = (self.S_y[Schange_class_index:])
                     #sample w_c - omega for every class
                 if printout:
                         print(f'\t\tSampling for class {c}... ')
-                print('Sampling...')
                 T_BatchX = self.sampleRandom(T_DataX, batch_size = self.batch_size)
-                T_BatchY = self.sampleRandom(T_DataY, batch_size = self.batch_size)
                 S_BatchX = self.sampleRandom(S_DataX, batch_size = self.batch_size)                
-                S_BatchY = self.sampleRandom(S_DataY, batch_size = self.batch_size)
 
-                T_aug = TF.rotate(T_BatchX, 0.15)
-                S_aug = TF.rotate(S_BatchX, 0.15)
-                # get embeddings
-                T_embed = embed(T_aug)
-                S_embed = embed(S_aug)
+                T_aug, S_aug = self.aug_strategy(T_BatchX, S_BatchX)
+                images_real_all.append(T_aug) 
+                images_syn_all.append(S_aug)
 
+            images_real_all = torch.cat(images_real_all, dim=0)
+            images_syn_all = torch.cat(images_syn_all, dim=0)
 
-                # compute the loss
-                loss = torch.sum((torch.mean(T_embed, dim=0) - torch.mean(S_embed, dim=0))**2)
-                Loss_Sum += loss
-                self.optimizerS.step()
+            T_output = self.model(images_real_all.type(torch.float32).to(self.device))
+            S_output = self.model(images_syn_all.type(torch.float32).to(self.device))
 
-            self.S_x = nn.Sigmoid()(self.S_x)
-            self.carbonTracker.epoch_end()
+            # compute the loss
+            loss += torch.sum((torch.mean(T_output, dim=0) - torch.mean(S_output, dim=0))**2)
+            loss.backward()
+            self.optimizerS.step()
+            with torch.no_grad():
+                self.S_x.sigmoid_()
+            loss_avg += loss.item()
+            if printout:
+                print(f'iteration [{k}/{self.k}]\t avg Loss: {loss_avg /2}')
             # backpropagation and weight update
-
-            Loss_Sum.backward()
-            self.optimizerT.step()            
             torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/DMIntermidiateX.pt')
             torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/DMIntermidiateY.pt')
+            self.carbonTracker.epoch_end()
         self.carbonTracker.stop()
         return self.S_x, self.S_y
     
@@ -136,7 +148,7 @@ costumLabel  = 'DMAfter'
 homeDir = os.getcwd()
 print(f'Running at "{homeDir}"...')
 os.chdir(homeDir)
-batch_size   = 32
+batch_size   = 16
 ####### PARAMETERS #######
 print('preparing training data...')
 #Train data
@@ -152,13 +164,12 @@ train_Loader = torch.utils.data.DataLoader(train_Set,
 
 print('\nStaring Condensation...\n')
 
-model = M.ConvNet2(output_layer='avgpool')#M.CD_temp()
+model = M.ConvNet()
 DM = DistributionMatching(model
-                        , batchSize = 32
+                        , batchSize = 16
                         , syntheticSampleSize = 100
                         , k = 10
                         , c = 2
-                        , lr_Theta = 0.01
                         , lr_S = 1
                         , loss_Fun = nn.BCEWithLogitsLoss()
                         , DataSet = dataset

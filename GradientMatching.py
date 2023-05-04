@@ -200,12 +200,15 @@ datatype     = ''
 
 costumLabel  = 'GMAfter'
 andrea = False
+andreaDesk = True
 server = False
-desktopKev = True
+desktopKev = False
 if server:
     os.chdir("/home/datacond/Documents/school/To_Server")
 elif andrea:
     os.chdir('/Users/andreamoody/Documents/GitHub/DC-MasterThesis-2023')
+elif andreaDesk:
+    os.chdir(r'C:\Users\andre\Documents\GitHub\DC-MasterThesis-2023')
 elif desktopKev:
     os.chdir('/Users/thire/OneDrive/Dokumenter/Current_Semester/DC-MasterThesis-2023')
 else:

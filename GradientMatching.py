@@ -48,7 +48,6 @@ class GradientMatching():
                             monitor_epochs = -1,
                             update_interval = 1
                             )
-        self.sigmoid = nn.Sigmoid()
         print(f'Setup:\n\tUsing Compute: {self.device}\n\tk = {k}\n\tt = {t}\n\tc = {c}\n\tLearning Rate S: = {lr_S}',
                             f'\tLearning Rate Theta = {lr_Theta}')
 
@@ -178,10 +177,7 @@ class GradientMatching():
                                     batch * len(data), len(S_loader.dataset),
                                     (100. * batch) / len(S_loader),
                                     np.mean(tempLossLst)))
-                
-
-                self.S_x = self.sigmoid(self.S_x) #Replace tanh -> sigmoid? [0-1]
-
+                with torch.no_grad(): self.S_x.sigmoid_()
                 torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateX.pt')
                 torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateY.pt')
             self.carbonTracker.epoch_end()

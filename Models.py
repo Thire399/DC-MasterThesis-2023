@@ -154,11 +154,9 @@ class ConvNet(nn.Module):
         out = self.norm3(out)
         out = self.relu3(out)
         out = self.pool3(out)
-        
         out = out.view(out.size(0), -1)
         out = self.fc(out)
         return out
-
 ##########################################################
 
 
@@ -232,10 +230,10 @@ class ConvNet2(nn.Module):
 
 
 #####################################
-''' ConvNet '''
-class ConvNet(nn.Module):
+''' ConvNet  Andrea -- '''
+class ConvNet3(nn.Module):
     def __init__(self, channel, num_classes, net_width, net_depth, net_act, net_norm, net_pooling, im_size = (128,128)):
-        super(ConvNet, self).__init__()
+        super(ConvNet3, self).__init__()
 
         self.features, shape_feat = self._make_layers(channel, net_width, net_depth, net_norm, net_act, net_pooling, im_size)
         num_feat = shape_feat[0]*shape_feat[1]*shape_feat[2]

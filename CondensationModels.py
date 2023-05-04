@@ -107,11 +107,11 @@ class GradientMatching():
         DistanceLst = []
 
         for k in range(self.k):
-            del self.model 
-            self.model = M.ConvNet().to(self.device)
+#            del self.model 
+#            self.model = M.ConvNet().to(self.device)
             self.carbonTracker.epoch_start()
             print('init random weights...')
-            #self.model._init_weights()
+            self.model._init_weights()
             for t in range(self.t):
                 self.optimizerS.zero_grad()
                 self.optimizerT.zero_grad()
@@ -309,7 +309,7 @@ datatype     = ''
 costumLabel  = 'GMAfter'
 andrea = False
 server = False
-desktopKev = True
+desktopKev = False
 if server:
     os.chdir("/home/datacond/Documents/school/To_Server")
 elif andrea:
@@ -333,35 +333,35 @@ train_Loader = torch.utils.data.DataLoader(train_Set,
                                         num_workers = 4)
 
 print('\nStaring Condensation...\n')
-#model = M.ConvNet()
-#GM = GradientMatching(model
-                        # , batchSize = 64
-                        # , syntheticSampleSize = 402
-                        # , k = 10
-                        # , t = 50
-                        # , c = 2
-                        # , lr_Theta = 0.01
-                        # , lr_S = 0.1
-                        # , loss_Fun = nn.BCEWithLogitsLoss()
-                        # , DataSet = dataset
-                        # , customLabel = costumLabel)
-model = M.ConvNet2(output_layer='avgpool')#M.CD_temp()
-DM = DistributionMatching(model
-                        , batchSize = 32
-                        , syntheticSampleSize = 100
-                        , k = 10
-                        , c = 2
-                        , lr_Theta = 0.01
-                        , lr_S = 1
-                        , loss_Fun = nn.BCEWithLogitsLoss()
-                        , DataSet = dataset
-                        , customLabel = costumLabel)
+model = M.ConvNet() #M.CD_temp()
+GM = GradientMatching(model = model
+                         , batchSize = 64
+                         , syntheticSampleSize = 402
+                         , k = 10
+                         , t = 50
+                         , c = 2
+                         , lr_Theta = 0.01
+                         , lr_S = 0.1
+                         , loss_Fun = nn.BCEWithLogitsLoss()
+                         , DataSet = dataset
+                         , customLabel = costumLabel)
+#model = M.ConvNet2(output_layer='avgpool')
+#DM = DistributionMatching(model
+#                        , batchSize = 32
+#                        , syntheticSampleSize = 100
+#                        , k = 10
+#                        , c = 2
+#                        , lr_Theta = 0.01
+#                        , lr_S = 1
+#                        , loss_Fun = nn.BCEWithLogitsLoss()
+#                        , DataSet = dataset
+#                        , customLabel = costumLabel)
 
-#x, y, d = GM.Generate(xTrain, yTrain)
-#GM.save_output()
+x, y, d = GM.Generate(xTrain, yTrain)
+GM.save_output()
 
-x = DM.Generate(xTrain, yTrain)
-DM.save_output()
+#x = DM.Generate(xTrain, yTrain)
+#DM.save_output()
 
 #x = x.cpu().detach().numpy()
 #plt.plot(range(len(d)), d)

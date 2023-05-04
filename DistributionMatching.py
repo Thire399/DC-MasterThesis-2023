@@ -67,8 +67,8 @@ class DistributionMatching():
             T_aug = TF.rotate(true_x, 0.15)
             S_aug = TF.rotate(syn_x, 0.15)
         elif rand_nr == 2:
-            T_aug = torch.flip(true_x, [0, 1])
-            S_aug = torch.flip(syn_x, [0, 1])
+            T_aug = torch.flip(true_x, [2])
+            S_aug = torch.flip(syn_x, [2])
         else: 
             T_aug = TF.adjust_brightness(true_x, 0,2)
             S_aug = TF.adjust_brightness(syn_x, 0,2)

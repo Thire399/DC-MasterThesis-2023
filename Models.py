@@ -130,6 +130,7 @@ class ConvNet(nn.Module):
         self.norm3 = nn.InstanceNorm2d(128)
         self.relu3 = nn.ReLU(inplace=True)
         self.pool3 = nn.AvgPool2d(kernel_size=2, stride=2)
+        
         self.fc = nn.Linear(32768, num_classes)
     def _init_weights(self):
         for m in self.modules():
@@ -154,11 +155,12 @@ class ConvNet(nn.Module):
         out = self.norm3(out)
         out = self.relu3(out)
         out = self.pool3(out)
+        
         out = out.view(out.size(0), -1)
         out = self.fc(out)
         return out
-##########################################################
 
+##########################################################
 
 
 ########## Condensation model from the paper 2 ##############
@@ -166,7 +168,7 @@ class ConvNet(nn.Module):
 class ConvNet2(nn.Module):
     def __init__(self, num_classes=1, embedding_size = 32 ,output_layer=None,  dropout_prob=0.58):
         super(ConvNet2, self).__init__()
-        self.conv1 = nn.Conv2d(3, 128, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(1, 128, kernel_size=3, padding=1)
         self.norm1 = nn.InstanceNorm2d(128)
         self.relu1 = nn.ReLU(inplace=True)
         self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
@@ -181,7 +183,7 @@ class ConvNet2(nn.Module):
         self.relu3 = nn.ReLU(inplace=True)
         self.pool3 = nn.AvgPool2d(kernel_size=2, stride=2)
 
-        self.avgpool = nn.AdaptiveAvgPool2d((3, 3))
+        #self.avgpool = nn.AdaptiveAvgPool2d((3, 3))
         #self.embedding = nn.Linear(128*3*3, num_classes)
         self.fc = nn.Linear(embedding_size, num_classes)
         self.output_layer = output_layer
@@ -193,6 +195,11 @@ class ConvNet2(nn.Module):
                 if hasattr(m, 'weight') and m.weight is not None:
                     m.weight.requires_grad_(True)
         return None
+    
+    def embed(self, x):
+        out = self.features(x)
+        out = out.view(out.size(0), -1)
+        return out
     
     def forward(self, x):
         out = self.conv1(x)
@@ -227,111 +234,7 @@ class ConvNet2(nn.Module):
         return out
 
 
-
-
-#####################################
-''' ConvNet  Andrea -- '''
-class ConvNet3(nn.Module):
-    def __init__(self, channel, num_classes, net_width, net_depth, net_act, net_norm, net_pooling, im_size = (128,128)):
-        super(ConvNet3, self).__init__()
-
-        self.features, shape_feat = self._make_layers(channel, net_width, net_depth, net_norm, net_act, net_pooling, im_size)
-        num_feat = shape_feat[0]*shape_feat[1]*shape_feat[2]
-        self.classifier = nn.Linear(num_feat, num_classes)
-
-    def forward(self, x):
-        out = self.features(x)
-        out = out.view(out.size(0), -1)
-        out = self.classifier(out)
-        return out
-
-    def embed(self, x):
-        out = self.features(x)
-        out = out.view(out.size(0), -1)
-        return out
-
-    def _get_activation(self, net_act):
-        if net_act == 'sigmoid':
-            return nn.Sigmoid()
-        elif net_act == 'relu':
-            return nn.ReLU(inplace=True)
-        elif net_act == 'leakyrelu':
-            return nn.LeakyReLU(negative_slope=0.01)
-        else:
-            exit('unknown activation function: %s'%net_act)
-
-    def _get_pooling(self, net_pooling):
-        if net_pooling == 'maxpooling':
-            return nn.MaxPool2d(kernel_size=2, stride=2)
-        elif net_pooling == 'avgpooling':
-            return nn.AvgPool2d(kernel_size=2, stride=2)
-        elif net_pooling == 'none':
-            return None
-        else:
-            exit('unknown net_pooling: %s'%net_pooling)
-
-
-    def _make_layers(self, channel, net_width, net_depth, net_norm, net_act, net_pooling, im_size):
-        layers = []
-        in_channels = channel
-        if im_size[0] == 28:
-            im_size = (32, 32)
-        shape_feat = [in_channels, im_size[0], im_size[1]]
-        for d in range(net_depth):
-            layers += [nn.Conv2d(in_channels, net_width, kernel_size=3, padding=3 if channel == 1 and d == 0 else 1)]
-            shape_feat[0] = net_width
-            if net_norm != 'none':
-                layers += [nn.BatchNorm2d(shape_feat[0], affine=True)(net_norm, shape_feat)]
-            layers += [self._get_activation(net_act)]
-            in_channels = net_width
-            if net_pooling != 'none':
-                layers += [self._get_pooling(net_pooling)]
-                shape_feat[1] //= 2
-                shape_feat[2] //= 2
-
-        return nn.Sequential(*layers), shape_feat
-
-##################################### 
-### Temp condensation model ###
-class CD_temp(nn.Module):
-    def __init__(self):
-        #remake to use conv.
-        super(CD_temp, self).__init__()
-        self.Conv1      = nn.Conv2d(3  , 64 , 3, padding= 1)
-        self.Conv2      = nn.Conv2d(64 , 128, 3, padding= 1)
-        self.Conv3      = nn.Conv2d(128, 64, 3, padding= 1)
-        self.Conv4      = nn.Conv2d(64, 3, 3, padding= 1)
-        self.sigmod     = nn.Sigmoid()
-        self.ReLu       = nn.ReLU()
-        self.maxpooling = nn.MaxPool2d(2)
-        self.fc         = nn.Linear(12288, 1)
-        # initialize the weights
-        self._init_weights()
-
-    def _init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
-                nn.init.xavier_uniform_(m.weight)#, mean=0.0, std=0.01)
-                if hasattr(m, 'weight') and m.weight is not None:
-                    m.weight.requires_grad_(True)
-
-        return None
-
-    def forward(self, x):
-        out = self.Conv1(x)
-        out = self.ReLu(out)
-        out = self.Conv2(out)
-        out = self.ReLu(out)
-        out = self.Conv3(out)
-        out = self.ReLu(out)
-        out = self.Conv4(out)
-        out = self.ReLu(out)
-        out = self.maxpooling(out)
-        out = self.sigmod(out)
-        out = torch.flatten(out, start_dim = 1)
-        out = self.fc(out)
-        return out
-
+##########################################################
 
 ######## Early Stopping ############
 #The early stopping class is from here this github, and the credit goes to him.

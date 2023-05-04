@@ -148,7 +148,7 @@ costumLabel  = 'DMAfter'
 homeDir = os.getcwd()
 print(f'Running at "{homeDir}"...')
 os.chdir(homeDir)
-batch_size   = 16
+batch_size   = 32
 ####### PARAMETERS #######
 print('preparing training data...')
 #Train data
@@ -166,7 +166,7 @@ print('\nStaring Condensation...\n')
 
 model = M.ConvNet()
 DM = DistributionMatching(model
-                        , batchSize = 16
+                        , batchSize = 32
                         , syntheticSampleSize = 100
                         , k = 10
                         , c = 2

@@ -48,7 +48,6 @@ class GradientMatching():
                             monitor_epochs = -1,
                             update_interval = 1
                             )
-        self.sigmoid = nn.Sigmoid()
         print(f'Setup:\n\tUsing Compute: {self.device}\n\tk = {k}\n\tt = {t}\n\tc = {c}\n\tLearning Rate S: = {lr_S}',
                             f'\tLearning Rate Theta = {lr_Theta}')
 
@@ -80,6 +79,7 @@ class GradientMatching():
                 if isinstance(l, nn.Linear) or isinstance(l, nn.Conv2d):
                     grad_list.append(l.weight.grad.flatten())
         del loss
+        del out
         gc.collect() # cleanup step. (Loss here not used)
         return grad_list
 
@@ -92,6 +92,9 @@ class GradientMatching():
             torch.save(x, f = f'{self.savePath}/{self.customLabel}X.pt')
             torch.save(y, f = f'{self.savePath}/{self.customLabel}Y.pt')
         print(f'Saved "{self.customLabel}" to "{self.savePath}"')
+        del x
+        del y
+        gc.collect() # clean up
         return None
 
     def Generate(self, T_x, T_y):
@@ -104,9 +107,11 @@ class GradientMatching():
         DistanceLst = []
 
         for k in range(self.k):
+            del self.model 
+            self.model = M.ConvNet().to(self.device)
             self.carbonTracker.epoch_start()
             print('init random weights...')
-            self.model._init_weights()
+            #self.model._init_weights()
             for t in range(self.t):
                 self.optimizerS.zero_grad()
                 self.optimizerT.zero_grad()
@@ -135,28 +140,28 @@ class GradientMatching():
                     T_BatchY = self.sampleRandom(T_DataY, batch_size = self.batch_size)
                     S_BatchX = self.sampleRandom(S_DataX, batch_size = self.batch_size)                
                     S_BatchY = self.sampleRandom(S_DataY, batch_size = self.batch_size)
-                    del T_DataX
-                    del T_DataY
-                    del S_DataX
-                    del S_DataY
-                    gc.collect() # clean up
+                    #del T_DataX
+                    #del T_DataY
+                    #del S_DataX
+                    #del S_DataY
+                    #gc.collect() # clean up
                     t_grad = self.GetGradient(T_BatchX, T_BatchY)
                     s_grad = self.GetGradient(S_BatchX, S_BatchY)
-                    del T_BatchX
-                    del T_BatchY
-                    del S_BatchY
-                    del S_BatchX
-                    gc.collect() # clean up
+                    #del T_BatchX
+                    #del T_BatchY
+                    #del S_BatchY
+                    #del S_BatchX
+                    #gc.collect() # clean up
                     D = self.Distance(t_grad, s_grad)
                     D.backward()
                     DistanceLst.append(D.detach().cpu().numpy())
                     self.optimizerS.step()
-                    del t_grad
-                    del s_grad
-                    gc.collect() # clean up
+                    #del t_grad
+                    #del s_grad
+                    #gc.collect() # clean up
                 Whole_S = torch.utils.data.TensorDataset(self.S_x, self.S_y)
                 S_loader = torch.utils.data.DataLoader(Whole_S
-                                                        , batch_size = batch_size
+                                                        , batch_size = self.batch_size
                                                         , shuffle = True
                                                         , num_workers = 0)
                 tempLossLst = []
@@ -178,10 +183,12 @@ class GradientMatching():
                                     batch * len(data), len(S_loader.dataset),
                                     (100. * batch) / len(S_loader),
                                     np.mean(tempLossLst)))
-                
-
-                self.S_x = self.sigmoid(self.S_x) #Replace tanh -> sigmoid? [0-1]
-
+                del Whole_S
+                del S_loader
+                del loss
+                del tempLossLst
+                gc.collect()
+                with torch.no_grad(): self.S_x.sigmoid_() #Replace tanh -> sigmoid? [0-1]
                 torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateX.pt')
                 torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateY.pt')
             self.carbonTracker.epoch_end()
@@ -301,7 +308,7 @@ class DistributionMatching():
 
             self.S_x = nn.Sigmoid()(self.S_x)
             self.carbonTracker.epoch_end()
-            # backpropagation and weight update
+
 
             Loss_Sum.backward()
             self.optimizerT.step()            
@@ -344,6 +351,7 @@ train_Loader = torch.utils.data.DataLoader(train_Set,
                                         num_workers = 4)
 
 print('\nStaring Condensation...\n')
+<<<<<<< Updated upstream
 #model = M.ConvNet()
 #GM = GradientMatching(model
                         # , batchSize = 64
@@ -361,6 +369,14 @@ DM = DistributionMatching(model
                         , batchSize = 32
                         , syntheticSampleSize = 100
                         , k = 10
+=======
+model = M.ConvNet()
+GM = GradientMatching(model
+                        , batchSize = 64
+                        , syntheticSampleSize = 402
+                        , k = 10
+                        , t = 50
+>>>>>>> Stashed changes
                         , c = 2
                         , lr_Theta = 0.01
                         , lr_S = 1

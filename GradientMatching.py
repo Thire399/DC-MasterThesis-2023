@@ -197,12 +197,7 @@ class GradientMatching():
 #dataSet      = 'chest_xray'
 dataset = 'Alzheimer_MRI'
 datatype     = ''
-
-costumLabel  = 'GMAfter'
-andrea = False
-andreaDesk = True
-server = False
-desktopKev = False
+costumLabel  = 'DMAfter'
 homeDir = os.getcwd()
 print(f'Running at "{homeDir}"...')
 os.chdir(homeDir)

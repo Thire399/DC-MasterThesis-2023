@@ -47,18 +47,10 @@ class DistributionMatching():
                             )
         print(f'Setup:\n\tUsing Compute: {self.device}\n\tk = {k}\n \tc = {c}\n\tLearning Rate S: = {lr_S}',
                             f'\tLearning Rate Theta = {lr_Theta}')
-
-    def Empirical_mmd(X, Y, gamma):
-        K_xx = rbf_kernel(X, X, gamma)
-        K_xy = rbf_kernel(X, Y, gamma)
-        K_yy = rbf_kernel(Y, Y, gamma)
-        mmd = np.mean(K_xx) - 2 * np.mean(K_xy) + np.mean(K_yy)
-        return mmd
     
     def sampleRandom(self, data, batch_size):
         index = np.random.randint(data.shape[0], size = batch_size)
         return torch.stack([data[i] for i in index])
-    
 
     def save_output(self, x = None, y = None) -> None:
         print('Saving synthetic dataset...')
@@ -110,12 +102,6 @@ class DistributionMatching():
                 T_BatchY = self.sampleRandom(T_DataY, batch_size = self.batch_size)
                 S_BatchX = self.sampleRandom(S_DataX, batch_size = self.batch_size)                
                 S_BatchY = self.sampleRandom(S_DataY, batch_size = self.batch_size)
-                
-                #compute MDD and add augmentation
-                #T_out = self.Compute(T_BatchX)
-                #S_out = self.Compute(S_BatchX)
-                #print(T_BatchX[1][1])
-                #print(T_BatchX)
 
                 T_aug = TF.rotate(T_BatchX, 0.15)
                 S_aug = TF.rotate(S_BatchX, 0.15)
@@ -146,22 +132,10 @@ class DistributionMatching():
 #dataSet      = 'chest_xray'
 dataset = 'Alzheimer_MRI'
 datatype     = ''
-
-costumLabel  = 'GMAfter'
-andrea = False
-andreaDesk = True
-desktopKev = False
-server = False
-if server:
-    os.chdir("/home/datacond/Documents/school/To_Server")
-elif andrea:
-    os.chdir('/Users/andreamoody/Documents/GitHub/DC-MasterThesis-2023')
-elif andreaDesk:
-    os.chdir(r'C:\Users\andre\Documents\GitHub\DC-MasterThesis-2023')
-elif desktopKev:
-    os.chdir('/Users/thire/OneDrive/Dokumenter/Current_Semester/DC-MasterThesis-2023')
-else:
-    os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
+costumLabel  = 'DMAfter'
+homeDir = os.getcwd()
+print(f'Running at "{homeDir}"...')
+os.chdir(homeDir)
 batch_size   = 32
 ####### PARAMETERS #######
 print('preparing training data...')

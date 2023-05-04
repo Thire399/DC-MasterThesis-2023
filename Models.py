@@ -234,7 +234,7 @@ class ConvNet2(nn.Module):
 
 #####################################
 ''' ConvNet '''
-class ConvNet(nn.Module):
+class ConvNet3(nn.Module):
     def __init__(self, channel, num_classes, net_width, net_depth, net_act, net_norm, net_pooling, im_size = (128,128)):
         super(ConvNet, self).__init__()
 

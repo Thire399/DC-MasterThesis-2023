@@ -164,10 +164,11 @@ class GradientMatching():
                                     batch * len(data), len(S_loader.dataset),
                                     (100. * batch) / len(S_loader),
                                     np.mean(tempLossLst)))
-                with torch.no_grad():
-                    self.S_x.sigmoid_()
-                torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateX.pt')
-                torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateY.pt')
+            torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateX.pt')
+            torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateY.pt')
+
+            with torch.no_grad():
+                self.S_x.sigmoid_()
             self.carbonTracker.epoch_end()
 
         self.carbonTracker.stop()
@@ -181,7 +182,7 @@ class GradientMatching():
 #dataSet      = 'chest_xray'
 dataset = 'Alzheimer_MRI'
 datatype     = ''
-costumLabel  = 'DMAfter'
+costumLabel  = 'GMAfter'
 homeDir = os.getcwd()
 print(f'Running at "{homeDir}"...')
 os.chdir(homeDir)
@@ -204,11 +205,11 @@ model = M.ConvNet()
 GM = GradientMatching(model
                         , batchSize = 64
                         , syntheticSampleSize = 402
-                        , k = 1000
+                        , k = 100
                         , t = 10
                         , c = 2
                         , lr_Theta = 0.01
-                        , lr_S = 0.1
+                        , lr_S = 10
                         , loss_Fun = nn.BCEWithLogitsLoss()
                         , DataSet = dataset
                         , customLabel = costumLabel)

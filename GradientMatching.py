@@ -58,22 +58,22 @@ class GradientMatching():
             Returns
             Sigmoid(x.torch.tensor)
         """
-        return 1 / (1+torch.exp(x))
+        return 1 / (1+torch.exp(-x))
     def Distance(self, A, B):
         _sum_ = 0
         for i in range(len(A)):
             upper = torch.dot(A[i], B[i])
             lower = torch.norm(A[i]) * torch.norm(B[i])
-            frac = upper / lower
+            frac = upper / (lower + 1e-10) #division by 0
             _sum_ += 1 - frac
         return torch.tensor(_sum_, requires_grad = True)
     
     def sampleRandom(self, data, batch_size):
         index = np.random.randint(data.shape[0], size = batch_size)
         return torch.stack([data[i] for i in index])
-
+    
     def GetGradient(self, x, y):
-        self.model.train()
+        self.model.eval()
         out = self.model(x.to(self.device))
         out = out.flatten()
         loss = self.loss_Fun(out, y.type(torch.float32).to(self.device))
@@ -85,8 +85,7 @@ class GradientMatching():
             else:
                 if isinstance(l, nn.Linear) or isinstance(l, nn.Conv2d):
                     grad_list.append(l.weight.grad.flatten())
-        del loss
-        gc.collect() # cleanup step. (Loss here not used)
+                    # cleanup step. (Loss here not used)
         return grad_list
 
     def save_output(self, x = None, y = None) -> None:
@@ -114,8 +113,6 @@ class GradientMatching():
             print('init random weights...')
             self.model._init_weights()
             for t in range(self.t):
-                self.optimizerS.zero_grad()
-                self.optimizerT.zero_grad()
                 if t % 5 == 0:
                     printout = True
                     print(f'K Iteration: {k}\n\tT Iteration: {t}')
@@ -142,10 +139,23 @@ class GradientMatching():
                     S_BatchY = self.sampleRandom(S_DataY, batch_size = self.batch_size)
                     t_grad = self.GetGradient(T_BatchX, T_BatchY)
                     s_grad = self.GetGradient(S_BatchX, S_BatchY)
+                    self.optimizerS.zero_grad()
+                    self.optimizerT.zero_grad()
                     D = self.Distance(t_grad, s_grad)
                     D.backward()
-                    DistanceLst.append(D.detach().cpu().numpy())
+
+                    # for i in range(len(s_grad)):
+                    #     temp = s_grad[i].detach().cpu().numpy() == t_grad[i].detach().cpu().numpy()
+                    #     if sum(temp) == len(s_grad):
+                    #         print('s_grad == t_grad')
+                    #         print(f'D:{D}\nsgrad{s_grad}\n tgrad; {t_grad}')
+                    #         break
+                    # if D == 0:
+                    #     print('D == 0')
+                    #     print(f'D:{D}\nsgrad{s_grad}\n tgrad; {t_grad}')
+                    
                     self.optimizerS.step()
+                    DistanceLst.append(D.detach().cpu().numpy())
 
                 Whole_S = torch.utils.data.TensorDataset(self.S_x, self.S_y)
                 S_loader = torch.utils.data.DataLoader(Whole_S
@@ -209,15 +219,16 @@ train_Loader = torch.utils.data.DataLoader(train_Set,
                                         num_workers = 4)
 
 print('\nStaring Condensation...\n')
+torch.manual_seed(0)
 model = M.ConvNet()
 GM = GradientMatching(model
                         , batchSize = 64
                         , syntheticSampleSize = 402
-                        , k = 10
+                        , k = 4
                         , t = 50
                         , c = 2
                         , lr_Theta = 0.01
-                        , lr_S = 10
+                        , lr_S = 0.1
                         , loss_Fun = nn.BCEWithLogitsLoss()
                         , DataSet = dataset
                         , customLabel = costumLabel)
@@ -225,6 +236,7 @@ GM = GradientMatching(model
 
 x, y, d = GM.Generate(xTrain, yTrain)
 GM.save_output()
+torch.save(d, f=f'Data/Synthetic_Alzheimer_MRI/testDistance.pt')
 
 #x = x.cpu().detach().numpy()
 #plt.plot(range(len(d)), d)

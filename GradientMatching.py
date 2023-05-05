@@ -51,7 +51,14 @@ class GradientMatching():
         print(f'Setup:\n\tUsing Compute: {self.device}\n\tk = {k}\n\tt = {t}\n\tc = {c}\n\tLearning Rate S: = {lr_S}',
                             f'\tLearning Rate Theta = {lr_Theta}')
 
-        
+    def sigmoid(self, x):
+        """Sigmoid Activation Function
+            Arguments:
+            x.torch.tensor
+            Returns
+            Sigmoid(x.torch.tensor)
+        """
+        return 1 / (1+torch.exp(x))
     def Distance(self, A, B):
         _sum_ = 0
         for i in range(len(A)):
@@ -167,8 +174,9 @@ class GradientMatching():
             torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateX.pt')
             torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateY.pt')
 
-            with torch.no_grad():
-                self.S_x.sigmoid_()
+            #with torch.no_grad():
+            #    self.S_x.sigmoid_()
+            self.S_x = self.sigmoid(self.S_x)
             self.carbonTracker.epoch_end()
 
         self.carbonTracker.stop()
@@ -209,7 +217,7 @@ GM = GradientMatching(model
                         , t = 50
                         , c = 2
                         , lr_Theta = 0.01
-                        , lr_S = 0.1
+                        , lr_S = 10
                         , loss_Fun = nn.BCEWithLogitsLoss()
                         , DataSet = dataset
                         , customLabel = costumLabel)

@@ -178,5 +178,11 @@ DM = DistributionMatching(model
 #x, y, d = GM.Generate(xTrain, yTrain)
 #GM.save_output()
 
-x = DM.Generate(xTrain, yTrain)
+x, y = DM.Generate(xTrain, yTrain)
 DM.save_output()
+
+#print(y[0])
+x = x.cpu().detach().numpy()
+plt.imshow(x[0][0], cmap = 'gray')
+#plt.savefig('Data/Loss_chest_xray/test/DMTest.png', dpi = 400, bbox_inches = 'tight')
+plt.show()

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import torch
 import os
 
-os.chdir('/home/thire399/Documents/School/DC-MasterThesis-2023')
+os.chdir(os.getcwd())
 
 dataSet = 'Alzheimer_MRI'
 customLabel = 'Before'

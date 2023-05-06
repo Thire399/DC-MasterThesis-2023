@@ -77,18 +77,17 @@ class GradientMatching():
         out = self.model(x.to(self.device))
         out = out.flatten()
         loss = self.loss_Fun(out, y.type(torch.float32).to(self.device))
-        #gw_syn = torch.autograd.grad(loss, net_parameters, create_graph=True)
-        #loss.backward()
+        loss.backward()
         grad_list = []
-        #for i, l in enumerate(self.model.modules()):
-        #    if i == 0:
-        #        pass
-        #    else:
-        #        if isinstance(l, nn.Linear) or isinstance(l, nn.Conv2d):
-        #            grad_list.append(l.weight.grad.flatten())
-        #            # cleanup step. (Loss here not used)
+        for i, l in enumerate(self.model.modules()):
+           if i == 0:
+               pass
+           else:
+               if isinstance(l, nn.Linear) or isinstance(l, nn.Conv2d):
+                   grad_list.append(l.weight.grad.flatten())
+                   # cleanup step. (Loss here not used)
         return grad_list
-    def distance_wb(self, gwr, gws):
+    def distance_wb(self, gwr, gws):# Taken from the paper.
         shape = gwr.shape
         if len(shape) == 4: # conv, out*in*h*w
             gwr = gwr.reshape(shape[0], shape[1] * shape[2] * shape[3])
@@ -107,7 +106,7 @@ class GradientMatching():
         dis = dis_weight
         return dis
 
-    def match_loss(self, gw_syn, gw_real, args):
+    def match_loss(self, gw_syn, gw_real, args): # Taken from the paper.
         #dis = torch.tensor(0.0).to(self.device)
 
         if args == 'ours':
@@ -140,15 +139,24 @@ class GradientMatching():
             exit('unknown distance function: %s'%args.dis_metric)
 
         return dis
-    def save_output(self, x = None, y = None) -> None:
+    def save_output(self, x = None, y = None, after = False) -> None:
         print('Saving synthetic dataset...')
-        if x == None:
-            torch.save(self.S_x, f = f'{self.savePath}/{self.customLabel}X.pt')
-            torch.save(self.S_y, f = f'{self.savePath}/{self.customLabel}Y.pt')
+        if after:
+            if x == None:
+                torch.save(self.S_x, f = f'{self.savePath}/{self.customLabel}AfterX.pt')
+                torch.save(self.S_y, f = f'{self.savePath}/{self.customLabel}AfterY.pt')
+            else:
+                torch.save(x, f = f'{self.savePath}/{self.customLabel}AfterX.pt')
+                torch.save(y, f = f'{self.savePath}/{self.customLabel}AfterY.pt')
+            print(f'Saved "{self.customLabel}" to "{self.savePath}"')
         else:
-            torch.save(x, f = f'{self.savePath}/{self.customLabel}X.pt')
-            torch.save(y, f = f'{self.savePath}/{self.customLabel}Y.pt')
-        print(f'Saved "{self.customLabel}" to "{self.savePath}"')
+            if x == None:
+                torch.save(self.S_x, f = f'{self.savePath}/{self.customLabel}X.pt')
+                torch.save(self.S_y, f = f'{self.savePath}/{self.customLabel}Y.pt')
+            else:
+                torch.save(x, f = f'{self.savePath}/{self.customLabel}X.pt')
+                torch.save(y, f = f'{self.savePath}/{self.customLabel}Y.pt')
+            print(f'Saved "{self.customLabel}" to "{self.savePath}"')
         return None
 
     def Generate(self, T_x, T_y):
@@ -156,8 +164,8 @@ class GradientMatching():
         Schange_class_index = torch.argmax(self.S_y).item()
         Tchange_class_index = torch.argmax(T_y).item()
         
-        torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMBeforeX.pt')
-        torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMBeforeY.pt')
+        torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}BeforeX.pt')
+        torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}BeforeY.pt')
         DistanceLst = []
         T_y = T_y.type(torch.float32)
         for k in range(self.k):
@@ -190,7 +198,7 @@ class GradientMatching():
                     T_BatchY = self.sampleRandom(T_DataY, batch_size = self.batch_size)
                     S_BatchX = self.sampleRandom(S_DataX, batch_size = self.batch_size)                
                     S_BatchY = self.sampleRandom(S_DataY, batch_size = self.batch_size)
-                    
+                    # Testing out paper def.
                     output_real = self.model(T_BatchX.to(self.device))
                     output_real = output_real.flatten()
                     loss_real = self.loss_Fun(output_real, T_BatchY.to(self.device))
@@ -206,7 +214,7 @@ class GradientMatching():
                     output_syn = output_syn.flatten()
                     loss_syn = self.loss_Fun(output_syn, S_BatchY.to(self.device))
                     gw_syn = torch.autograd.grad(loss_syn, list(self.model.parameters()), create_graph=True)
-                    s_loss = self.match_loss(gw_syn, gw_real, 'cos')
+                    s_loss = self.match_loss(gw_syn, gw_real, 'mse')
                     del S_BatchX
                     del S_BatchY
                     del loss_syn
@@ -221,19 +229,9 @@ class GradientMatching():
                 #     t_grad = self.GetGradient(T_BatchX, T_BatchY)
                 #     s_grad = self.GetGradient(S_BatchX, S_BatchY)
                 #     self.optimizerS.zero_grad()
-                # D = self.Distance(t_grad, s_grad)
-                # D.backward()
+                    # D = self.Distance(t_grad, s_grad)
+                    # D.backward()
 
-                    # for i in range(len(s_grad)):
-                    #     temp = s_grad[i].detach().cpu().numpy() == t_grad[i].detach().cpu().numpy()
-                    #     if sum(temp) == len(s_grad):
-                    #         print('s_grad == t_grad')
-                    #         print(f'D:{D}\nsgrad{s_grad}\n tgrad; {t_grad}')
-                    #         break
-                    # if D == 0:
-                    #     print('D == 0')
-                    #     print(f'D:{D}\nsgrad{s_grad}\n tgrad; {t_grad}')
-                    
                     #self.optimizerS.step()
                     #DistanceLst.append(D.detach().cpu().numpy())
 
@@ -262,11 +260,11 @@ class GradientMatching():
                                     batch * len(data), len(S_loader.dataset),
                                     (100. * batch) / len(S_loader),
                                     np.mean(tempLossLst)))
-            torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateX.pt')
-            torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateY.pt')
+            torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateX.pt')
+            torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateY.pt')
 
-            with torch.no_grad():
-                self.S_x.sigmoid_()
+            #with torch.no_grad():
+            #    self.S_x.sigmoid_()
             #self.S_x = self.sigmoid(self.S_x)
             self.carbonTracker.epoch_end()
 
@@ -281,7 +279,7 @@ class GradientMatching():
 #dataSet      = 'chest_xray'
 dataset = 'Alzheimer_MRI'
 datatype     = ''
-costumLabel  = 'GMAfter'
+costumLabel  = 'GM_MSE'
 homeDir = os.getcwd()
 print(f'Running at "{homeDir}"...')
 os.chdir(homeDir)
@@ -305,7 +303,7 @@ model = M.ConvNet()
 GM = GradientMatching(model
                         , batchSize = batch_size
                         , syntheticSampleSize = 40
-                        , k = 50
+                        , k = 200
                         , t = 40
                         , c = 2
                         , lr_Theta = 0.01
@@ -316,8 +314,8 @@ GM = GradientMatching(model
 
 
 x, y, d = GM.Generate(xTrain, yTrain)
-GM.save_output()
-torch.save(d, f=f'Data/Synthetic_Alzheimer_MRI/testDistance.pt')
+GM.save_output(after = True)
+torch.save(d, f=f'Data/Synthetic_Alzheimer_MRI/{costumLabel}testDistance.pt')
 
 #x = x.cpu().detach().numpy()
 #plt.plot(range(len(d)), d)

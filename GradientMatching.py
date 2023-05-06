@@ -38,7 +38,7 @@ class GradientMatching():
         self.customLabel = customLabel
         self.lr_S = lr_S
         self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 1, 128, 128)), requires_grad = True) #Totally random data
-        self.S_y = Gen_Y(self.S_x.shape[0])
+        self.S_y = Gen_Y(self.S_x.shape[0]).type(torch.float32)
         self.loss_Fun = loss_Fun
         self.optimizerT = optim.SGD(self.model.parameters(), lr = lr_Theta, momentum = 0.5)
         self.optimizerS = optim.SGD([self.S_x], lr = lr_S, momentum = 0.5)
@@ -77,17 +77,69 @@ class GradientMatching():
         out = self.model(x.to(self.device))
         out = out.flatten()
         loss = self.loss_Fun(out, y.type(torch.float32).to(self.device))
-        loss.backward()
+        #gw_syn = torch.autograd.grad(loss, net_parameters, create_graph=True)
+        #loss.backward()
         grad_list = []
-        for i, l in enumerate(self.model.modules()):
-            if i == 0:
-                pass
-            else:
-                if isinstance(l, nn.Linear) or isinstance(l, nn.Conv2d):
-                    grad_list.append(l.weight.grad.flatten())
-                    # cleanup step. (Loss here not used)
+        #for i, l in enumerate(self.model.modules()):
+        #    if i == 0:
+        #        pass
+        #    else:
+        #        if isinstance(l, nn.Linear) or isinstance(l, nn.Conv2d):
+        #            grad_list.append(l.weight.grad.flatten())
+        #            # cleanup step. (Loss here not used)
         return grad_list
+    def distance_wb(self, gwr, gws):
+        shape = gwr.shape
+        if len(shape) == 4: # conv, out*in*h*w
+            gwr = gwr.reshape(shape[0], shape[1] * shape[2] * shape[3])
+            gws = gws.reshape(shape[0], shape[1] * shape[2] * shape[3])
+        elif len(shape) == 3:  # layernorm, C*h*w
+            gwr = gwr.reshape(shape[0], shape[1] * shape[2])
+            gws = gws.reshape(shape[0], shape[1] * shape[2])
+        elif len(shape) == 2: # linear, out*in
+            tmp = 'do nothing'
+        elif len(shape) == 1: # batchnorm/instancenorm, C; groupnorm x, bias
+            gwr = gwr.reshape(1, shape[0])
+            gws = gws.reshape(1, shape[0])
+            return torch.tensor(0, dtype=torch.float, device=gwr.device)
 
+        dis_weight = torch.sum(1 - torch.sum(gwr * gws, dim=-1) / (torch.norm(gwr, dim=-1) * torch.norm(gws, dim=-1) + 0.000001))
+        dis = dis_weight
+        return dis
+
+    def match_loss(self, gw_syn, gw_real, args):
+        #dis = torch.tensor(0.0).to(self.device)
+
+        if args == 'ours':
+            for ig in range(len(gw_real)):
+                gwr = gw_real[ig]
+                gws = gw_syn[ig]
+                dis += self.distance_wb(gwr, gws)
+
+        elif args == 'mse':
+            gw_real_vec = []
+            gw_syn_vec = []
+            for ig in range(len(gw_real)):
+                gw_real_vec.append(gw_real[ig].reshape((-1)))
+                gw_syn_vec.append(gw_syn[ig].reshape((-1)))
+            gw_real_vec = torch.cat(gw_real_vec, dim=0)
+            gw_syn_vec = torch.cat(gw_syn_vec, dim=0)
+            dis = torch.sum((gw_syn_vec - gw_real_vec)**2)
+
+        elif args == 'cos':
+            gw_real_vec = []
+            gw_syn_vec = []
+            for ig in range(len(gw_real)):
+                gw_real_vec.append(gw_real[ig].reshape((-1)))
+                gw_syn_vec.append(gw_syn[ig].reshape((-1)))
+            gw_real_vec = torch.cat(gw_real_vec, dim=0)
+            gw_syn_vec = torch.cat(gw_syn_vec, dim=0)
+            dis = 1 - torch.sum(gw_real_vec * gw_syn_vec, dim=-1) / (torch.norm(gw_real_vec, dim=-1) * torch.norm(gw_syn_vec, dim=-1) + 0.000001)
+
+        else:
+            exit('unknown distance function: %s'%args.dis_metric)
+
+        return dis
     def save_output(self, x = None, y = None) -> None:
         print('Saving synthetic dataset...')
         if x == None:
@@ -107,17 +159,18 @@ class GradientMatching():
         torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMBeforeX.pt')
         torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMBeforeY.pt')
         DistanceLst = []
-
+        T_y = T_y.type(torch.float32)
         for k in range(self.k):
             self.carbonTracker.epoch_start()
             print('init random weights...')
             self.model._init_weights()
             for t in range(self.t):
+                
                 if t % 5 == 0:
                     printout = True
                     print(f'K Iteration: {k}\n\tT Iteration: {t}')
                 else: printout = False
-
+                s_loss = torch.tensor(0.0).to(self.device)
                 for c in range(self.c):
                     if printout:
                         print('\t\tGenerating Batches...')
@@ -137,12 +190,39 @@ class GradientMatching():
                     T_BatchY = self.sampleRandom(T_DataY, batch_size = self.batch_size)
                     S_BatchX = self.sampleRandom(S_DataX, batch_size = self.batch_size)                
                     S_BatchY = self.sampleRandom(S_DataY, batch_size = self.batch_size)
-                    t_grad = self.GetGradient(T_BatchX, T_BatchY)
-                    s_grad = self.GetGradient(S_BatchX, S_BatchY)
-                    self.optimizerS.zero_grad()
-                    self.optimizerT.zero_grad()
-                    D = self.Distance(t_grad, s_grad)
-                    D.backward()
+                    
+                    output_real = self.model(T_BatchX.to(self.device))
+                    output_real = output_real.flatten()
+                    loss_real = self.loss_Fun(output_real, T_BatchY.to(self.device))
+                    
+                    gw_real = torch.autograd.grad(loss_real, list(self.model.parameters()))
+                    gw_real = list((_.detach().clone() for _ in gw_real))
+                    del loss_real
+                    del T_BatchY
+                    del T_BatchX
+                    del output_real
+                    gc.collect()
+                    output_syn = self.model(S_BatchX.to(self.device))
+                    output_syn = output_syn.flatten()
+                    loss_syn = self.loss_Fun(output_syn, S_BatchY.to(self.device))
+                    gw_syn = torch.autograd.grad(loss_syn, list(self.model.parameters()), create_graph=True)
+                    s_loss = self.match_loss(gw_syn, gw_real, 'cos')
+                    del S_BatchX
+                    del S_BatchY
+                    del loss_syn
+                    del gw_syn
+                    del gw_real
+                    gc.collect()
+                #self.optimizerS.zero_grad()
+                s_loss.backward()
+                self.optimizerS.step()
+                DistanceLst.append(s_loss.item())
+                
+                #     t_grad = self.GetGradient(T_BatchX, T_BatchY)
+                #     s_grad = self.GetGradient(S_BatchX, S_BatchY)
+                #     self.optimizerS.zero_grad()
+                # D = self.Distance(t_grad, s_grad)
+                # D.backward()
 
                     # for i in range(len(s_grad)):
                     #     temp = s_grad[i].detach().cpu().numpy() == t_grad[i].detach().cpu().numpy()
@@ -154,12 +234,12 @@ class GradientMatching():
                     #     print('D == 0')
                     #     print(f'D:{D}\nsgrad{s_grad}\n tgrad; {t_grad}')
                     
-                    self.optimizerS.step()
-                    DistanceLst.append(D.detach().cpu().numpy())
+                    #self.optimizerS.step()
+                    #DistanceLst.append(D.detach().cpu().numpy())
 
                 Whole_S = torch.utils.data.TensorDataset(self.S_x, self.S_y)
                 S_loader = torch.utils.data.DataLoader(Whole_S
-                                                        , batch_size = batch_size
+                                                        , batch_size = self.batch_size
                                                         , shuffle = True
                                                         , num_workers = 0)
                 tempLossLst = []
@@ -167,6 +247,7 @@ class GradientMatching():
                     print('Training on whole S...')
                 self.model.train()
                 # Training on whole S
+                
                 for batch, (data, target) in enumerate(S_loader, 1):
                     self.optimizerT.zero_grad() # a clean up step for PyTorch
                     out = self.model(data.type(torch.float32).to(self.device))
@@ -184,9 +265,9 @@ class GradientMatching():
             torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateX.pt')
             torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/GMIntermidiateY.pt')
 
-            #with torch.no_grad():
-            #    self.S_x.sigmoid_()
-            self.S_x = self.sigmoid(self.S_x)
+            with torch.no_grad():
+                self.S_x.sigmoid_()
+            #self.S_x = self.sigmoid(self.S_x)
             self.carbonTracker.epoch_end()
 
         self.carbonTracker.stop()
@@ -222,10 +303,10 @@ print('\nStaring Condensation...\n')
 torch.manual_seed(0)
 model = M.ConvNet()
 GM = GradientMatching(model
-                        , batchSize = 64
-                        , syntheticSampleSize = 402
-                        , k = 4
-                        , t = 50
+                        , batchSize = batch_size
+                        , syntheticSampleSize = 40
+                        , k = 50
+                        , t = 40
                         , c = 2
                         , lr_Theta = 0.01
                         , lr_S = 0.1

@@ -131,7 +131,7 @@ class ConvNet(nn.Module):
         self.relu3 = nn.ReLU(inplace=True)
         self.pool3 = nn.AvgPool2d(kernel_size=2, stride=2)
         
-        self.fc = nn.Linear(1152, num_classes)
+        self.fc = nn.Linear(32768, num_classes)
     def _init_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):

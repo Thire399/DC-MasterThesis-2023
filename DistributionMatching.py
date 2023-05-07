@@ -47,7 +47,7 @@ class DistributionMatching():
         print(f'Setup:\n\tUsing Compute: {self.device}\n\tk = {k}\n \tc = {c}\n\tLearning Rate S: = {lr_S}')
     
     def sampleRandom(self, data, batch_size):
-        index = np.random.randint(data.shape[0], size = int(batch_size/2))
+        index = np.random.randint(data.shape[0], size = batch_size)
         return torch.stack([data[i] for i in index])
 
     def save_output(self, x = None, y = None) -> None:
@@ -74,6 +74,15 @@ class DistributionMatching():
             S_aug = TF.adjust_brightness(syn_x, 0,2)
         return T_aug, S_aug
     
+    def sigmoid(self, x):
+        """Sigmoid Activation Function
+            Arguments:
+            x.torch.tensor
+            Returns
+            Sigmoid(x.torch.tensor)
+        """
+        return 1 / (1+torch.exp(x))
+
 
     def Generate(self, T_x, T_y,):
         Schange_class_index = torch.argmax(self.S_y).item()
@@ -89,7 +98,7 @@ class DistributionMatching():
             #Sample paratameters for network. 
             self.model._init_weights()
             loss = 0 
-            self.optimizerS.zero_grad()
+            #self.optimizerS.zero_grad() #try deleting this? 
             images_real_all = []
             images_syn_all = []
             if k % 5 == 0:
@@ -126,8 +135,8 @@ class DistributionMatching():
             loss += torch.sum((torch.mean(T_output, dim=0) - torch.mean(S_output, dim=0))**2)
             loss.backward()
             self.optimizerS.step()
-            with torch.no_grad():
-                self.S_x.sigmoid_()
+            #with torch.no_grad():
+                #self.S_x.sigmoid_()
             loss_avg += loss.item()
             if printout:
                 print(f'iteration [{k}/{self.k}]\t avg Loss: {loss_avg /2}')
@@ -135,6 +144,7 @@ class DistributionMatching():
             torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/DMIntermidiateX.pt')
             torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/DMIntermidiateY.pt')
             self.carbonTracker.epoch_end()
+        #self.S_x = self.sigmoid(self.S_x) #after
         self.carbonTracker.stop()
         return self.S_x, self.S_y
     
@@ -144,11 +154,11 @@ class DistributionMatching():
 #dataSet      = 'chest_xray'
 dataset = 'Alzheimer_MRI'
 datatype     = ''
-costumLabel  = 'DMAfter'
+costumLabel  = 'DMAfterLR10K100000'
 homeDir = os.getcwd()
 print(f'Running at "{homeDir}"...')
 os.chdir(homeDir)
-batch_size   = 32
+batch_size   = 16
 ####### PARAMETERS #######
 print('preparing training data...')
 #Train data
@@ -166,11 +176,11 @@ print('\nStaring Condensation...\n')
 
 model = M.ConvNet()
 DM = DistributionMatching(model
-                        , batchSize = 32
+                        , batchSize = 16
                         , syntheticSampleSize = 100 #0,1% - 4, 1% - 40, 10% - 402
-                        , k = 20000
+                        , k = 100000
                         , c = 2
-                        , lr_S = 1
+                        , lr_S = 10 # 10(ok?) 100(good)?
                         , loss_Fun = nn.BCEWithLogitsLoss()
                         , DataSet = dataset
                         , customLabel = costumLabel)

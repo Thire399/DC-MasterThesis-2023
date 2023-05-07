@@ -11,7 +11,17 @@ from sklearn.metrics.pairwise import rbf_kernel
 from carbontracker.tracker import CarbonTracker
 import gc
 
-
+# FOR PRINTINT #
+# ANSI escape codes for different colors
+RED = '\033[91m'
+GREEN = '\033[92m'
+YELLOW = '\033[93m'
+BLUE = '\033[94m'
+MAGENTA = '\033[95m'
+CYAN = '\033[96m'
+BOLD = "\u001b[1m"
+RESET = '\033[0m'
+########################
 warnings.filterwarnings("ignore")
 
 def Gen_Y(size):
@@ -24,7 +34,7 @@ def Gen_Y(size):
 class GradientMatching():
     def __init__(self, model, batchSize:int, syntheticSampleSize:int,
                   k:int, t:int, c:int, lr_Theta:float, lr_S:float
-                  , loss_Fun, DataSet:str, customLabel: str) -> None:
+                  , loss_Fun, DataSet:str, customLabel: str, cT_step: int) -> None:
         
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
@@ -32,6 +42,7 @@ class GradientMatching():
         self.k   = k
         self.t   = t
         self.c   = c
+        self.cT_step = cT_step
         self.lr_Theta = lr_Theta
         self.savePath = f'Data/Synthetic_{DataSet}'
         os.makedirs(f'{self.savePath}/CarbonLogs', exist_ok = True)
@@ -47,8 +58,8 @@ class GradientMatching():
                             monitor_epochs = -1,
                             update_interval = 1
                             )
-        print(f'Setup:\n\tUsing Compute: {self.device}\n\tk = {k}\n\tt = {t}\n\tc = {c}\n\tLearning Rate S: = {lr_S}',
-                            f'\tLearning Rate Theta = {lr_Theta}')
+        print(GREEN + BOLD + f'Setup:\n\tUsing Compute: {self.device}\n\tk = {k}\n\tt = {t}\n\tc = {c}\n\tLearning Rate S: = {lr_S}',
+                            f'\tLearning Rate Theta = {lr_Theta}' + RESET)
 
     def sigmoid(self, x):
         """Sigmoid Activation Function
@@ -139,7 +150,7 @@ class GradientMatching():
 
         return dis
     def save_output(self, x = None, y = None, after = False) -> None:
-        print('Saving synthetic dataset...')
+        print(RED + 'Saving synthetic dataset...' + RESET)
         if after:
             if x == None:
                 torch.save(self.S_x, f = f'{self.savePath}/{self.customLabel}AfterX.pt')
@@ -147,7 +158,7 @@ class GradientMatching():
             else:
                 torch.save(x, f = f'{self.savePath}/{self.customLabel}AfterX.pt')
                 torch.save(y, f = f'{self.savePath}/{self.customLabel}AfterY.pt')
-            print(f'Saved "{self.customLabel}" to "{self.savePath}"')
+            print(GREEN + f'Saved "{self.customLabel}" to "{self.savePath}"'+RESET)
         else:
             if x == None:
                 torch.save(self.S_x, f = f'{self.savePath}/{self.customLabel}X.pt')
@@ -155,7 +166,7 @@ class GradientMatching():
             else:
                 torch.save(x, f = f'{self.savePath}/{self.customLabel}X.pt')
                 torch.save(y, f = f'{self.savePath}/{self.customLabel}Y.pt')
-            print(f'Saved "{self.customLabel}" to "{self.savePath}"')
+            print(GREEN + f'Saved "{self.customLabel}" to "{self.savePath}"'+RESET)
         return None
 
     def Generate(self, T_x, T_y):
@@ -169,19 +180,19 @@ class GradientMatching():
         T_y = T_y.type(torch.float32)
         for k in range(self.k):
             self.carbonTracker.epoch_start()
-            print('init random weights...')
+            print(YELLOW + 'init random weights...' + RESET)
             self.model._init_weights()
             self.optimizerT = optim.SGD(self.model.parameters(), lr = self.lr_Theta, momentum = 0.5)
             self.optimizerS = optim.SGD([self.S_x], lr = self.lr_S, momentum = 0.5)
             for t in range(self.t):
                 if t % 5 == 0:
                     printout = True
-                    print(f'K Iteration: {k}\n\tT Iteration: {t}')
+                    print(YELLOW + BOLD + f'K Iteration: {k}\n\tT Iteration: {t}' + RESET)
                 else: printout = False
                 s_loss = torch.tensor(0.0).to(self.device)
                 for c in range(self.c):
                     if printout:
-                        print('\t\tGenerating Batches...')
+                        print(MAGENTA + '\t\tGenerating Batches...' + RESET )
                     if c == 0:
                         T_DataX = torch.tensor(T_x[:Tchange_class_index])
                         T_DataY = torch.tensor(T_y[:Tchange_class_index])
@@ -193,7 +204,7 @@ class GradientMatching():
                         S_DataX = torch.tensor(self.S_x[Schange_class_index:])
                         S_DataY = torch.tensor(self.S_y[Schange_class_index:])
                     if printout:
-                        print(f'\t\tSampling for class {c}... ')
+                        print(f'\t\t\tSampling for class:' + RED + f' {c}...' + RESET)
                     T_BatchX = self.sampleRandom(T_DataX, batch_size = self.batch_size)
                     T_BatchY = self.sampleRandom(T_DataY, batch_size = self.batch_size)
                     S_BatchX = self.sampleRandom(S_DataX, batch_size = self.batch_size)                
@@ -221,7 +232,7 @@ class GradientMatching():
                     # del gw_syn
                     # del gw_real
                     # gc.collect()
-                self.optimizerS.zero_grad()
+                #self.optimizerS.zero_grad()
                 s_loss.backward()
                 self.optimizerS.step()
                 DistanceLst.append(s_loss.item())
@@ -241,24 +252,27 @@ class GradientMatching():
                                                         , num_workers = 0)
                 tempLossLst = []
                 if printout:
-                    print('Training on whole S...')
+                    print(RED +'Training on whole S...'+RESET)
                 self.model.train()
                 # Training on whole S
-                
-                for batch, (data, target) in enumerate(S_loader, 1):
-                    self.optimizerT.zero_grad() # a clean up step for PyTorch
-                    out = self.model(data.type(torch.float32).to(self.device))
-                    out = out.flatten()
-                    loss = self.loss_Fun(out, (target).type(torch.float32).to(self.device))
-                    loss.backward(retain_graph = True)
-                    self.optimizerT.step()
-                    tempLossLst.append(loss.item())
-                    if printout:
-                        if batch % 2 == 0: #For printing
-                            print(4*' ', '===> Training (t): [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                                    batch * len(data), len(S_loader.dataset),
-                                    (100. * batch) / len(S_loader),
-                                    np.mean(tempLossLst)))
+                for idk in range(self.cT_step):
+                    
+                    if idk%25 == 0 and printout:
+                        print(GREEN + f'C-inner: '+ RESET + RED + f'{idk}/{self.cT_step}'+ RESET)
+                    for batch, (data, target) in enumerate(S_loader, 1):
+                        #self.optimizerT.zero_grad() # a clean up step for PyTorch
+                        out = self.model(data.type(torch.float32).to(self.device))
+                        out = out.flatten()
+                        loss = self.loss_Fun(out, (target).type(torch.float32).to(self.device))
+                        loss.backward(retain_graph = True)
+                        self.optimizerT.step()
+                        tempLossLst.append(loss.item())
+                        if printout:
+                            if batch % 2 == 0: #For printing
+                                print(4*' ', '===> Training (t): [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                                        batch * len(data), len(S_loader.dataset),
+                                        (100. * batch) / len(S_loader),
+                                        np.mean(tempLossLst)))
                 # if s_loss == 0 or np.mean(tempLossLst) < 1e-7: # if distance is optimal, sorta early stopping
                 #     break
             torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateX.pt')
@@ -277,13 +291,13 @@ class GradientMatching():
 #dataSet      = 'chest_xray'
 dataset = 'Alzheimer_MRI'
 datatype     = ''
-costumLabel  = 'MNIST'
+costumLabel  = 'TEST'
 homeDir = os.getcwd()
-print(f'Running at "{homeDir}"...')
+print(GREEN  +f'Running at "{homeDir}"...' + RESET)
 os.chdir(homeDir)
 batch_size   = 32
 ####### PARAMETERS #######
-print('preparing training data...')
+print(RED + 'Preparing training data...' + RESET)
 #Train data
 
 ########################################## TESTING MNIST DATA #########################################################################
@@ -315,15 +329,16 @@ yTrain = train_labels[sorted_indices]
 # yTrain = torch.load(f'Data/Proccesed/{dataset}/trainY.pt')
 # #xTrain = xTrain.repeat(1, 3, 1, 1)
 
-print('\nStaring Condensation...\n')
+print(RED + '\nStaring Condensation...\n' + RESET )
 torch.manual_seed(0)
 model = M.ConvNet()
 GM = GradientMatching(model
                         , batchSize = batch_size #batch for updating model.
                         , syntheticSampleSize = 20
-                        , k = 1000
+                        , k = 1
                         , t = 10
                         , c = 2
+                        , cT_step = 50
                         , lr_Theta = 0.01
                         , lr_S = 0.1
                         , loss_Fun = nn.BCEWithLogitsLoss()

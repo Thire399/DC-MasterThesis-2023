@@ -34,10 +34,10 @@ model.fc = nn.Linear(in_features = 2048, out_features = 1, bias = True)
 #               , df = 16384) # binary classification = 1.
 
 #Data parameters
-synthetic = False
-#dataSet      = 'Alzheimer_MRI'
-dataSet      = 'chest_xray'
-datatype     = ''
+synthetic = True
+dataSet      = 'Alzheimer_MRI'
+#dataSet      = 'chest_xray'
+datatype     = 'DMAfter'
 #'10PercentDistribution'
 costumLabel  = '800x800Full'#'SyntheticMRI128x128'#
 #costumLabel = '64x6410PercentDistribution'
@@ -52,20 +52,25 @@ learningRate = 1e-3
 optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.9)
 #optimizer    =  optim.Adam(model.parameters(), lr = learningRate)
 loss_Fun     = nn.BCEWithLogitsLoss()
-batch_size   = 5
+batch_size   = 32
 saveModel    = True
 figSave      = True
-highRes      = True
+highRes      = False
 ####### PARAMETERS #######
 
 ####### Main Calls ########
+def sigmoid(x):
+    #print(1/(1+torch.exp(-x)))
+    return 1 / (1+torch.exp(-x))
 
 def __main__():
-        print('starting...')
+        print('Starting...')
         if synthetic:
             xTrain = torch.load(f'Data/Synthetic_{dataSet}/' + datatype + 'X.pt')
-            yTrain = torch.load(f'Data/Synthetic_{dataSet}/' + datatype + 'Y.pt') 
-        if highRes:
+            yTrain = torch.load(f'Data/Synthetic_{dataSet}/' + datatype + 'Y.pt')
+            with torch.no_grad():
+                xTrain = xTrain.repeat(1,3,1,1).sigmoid_()
+        elif highRes:
             import Data_processing as DP
             print('High resulotion...\nGetting file names...')
             files = DP.GetFileNames('Data/Proccesed/chest_xray/train/')

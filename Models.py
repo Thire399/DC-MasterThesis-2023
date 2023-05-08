@@ -194,6 +194,22 @@ class ConvNet2(nn.Module):
                 if hasattr(m, 'weight') and m.weight is not None:
                     m.weight.requires_grad_(True)
         return None
+    def embed(self, x):
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.relu1(out)
+        out = self.pool1(out)
+        
+        out = self.conv2(out)
+        out = self.norm2(out)
+        out = self.relu2(out)
+        out = self.pool2(out)
+     
+        out = self.conv3(out)
+        out = self.norm3(out)
+        out = self.relu3(out)
+        out = self.pool3(out)
+        return out.view(out.size(0), -1)
     
     def forward(self, x):
         out = self.conv1(x)

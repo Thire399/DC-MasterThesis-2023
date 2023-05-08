@@ -281,7 +281,7 @@ class GradientMatching():
             #    self.S_x.sigmoid_()
             self.carbonTracker.epoch_end()
         self.carbonTracker.stop()
-        self.S_x = self.sigmoid(self.S_x)
+        #self.S_x = self.sigmoid(self.S_x)
         return self.S_x, self.S_y, DistanceLst
 
 

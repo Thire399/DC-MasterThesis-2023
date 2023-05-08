@@ -87,18 +87,19 @@ class DistributionMatching():
     def Generate(self, T_x, T_y,):
         Schange_class_index = torch.argmax(self.S_y).item()
         Tchange_class_index = torch.argmax(T_y).item()
-        torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/DMBeforeX.pt')
-        torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/DMBeforeY.pt')
+        torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}BeforeX.pt')
+        torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}BeforeY.pt')
         #embed = self.model.module.avgpool if torch.cuda.device_count() > 1 else self.model.avgpool # for GPU parallel
         self.model.to(self.device)
         loss_avg = 0
     
         for k in range(self.k):
+            self.optimizerS.zero_grad()
             self.carbonTracker.epoch_start()
             #Sample paratameters for network. 
             self.model._init_weights()
             loss = 0 
-            #self.optimizerS.zero_grad() #try deleting this? 
+             #try deleting this? 
             images_real_all = []
             images_syn_all = []
             if k % 5 == 0:
@@ -128,11 +129,14 @@ class DistributionMatching():
             images_real_all = torch.cat(images_real_all, dim=0)
             images_syn_all = torch.cat(images_syn_all, dim=0)
 
-            T_output = self.model(images_real_all.type(torch.float32).to(self.device))
-            S_output = self.model(images_syn_all.type(torch.float32).to(self.device))
+            T_output = self.model.embed(images_real_all.type(torch.float32).to(self.device))
+            S_output = self.model.embed(images_syn_all.type(torch.float32).to(self.device))
 
             # compute the loss
             loss += torch.sum((torch.mean(T_output, dim=0) - torch.mean(S_output, dim=0))**2)
+            #print((torch.mean(T_output, dim=0) - torch.mean(S_output, dim=0))**2)
+            #print(f'S mean{torch.mean(S_output, dim=0)}')
+            #print(f'T mean{torch.mean(T_output, dim=0)}')
             loss.backward()
             self.optimizerS.step()
             #with torch.no_grad():
@@ -141,8 +145,8 @@ class DistributionMatching():
             if printout:
                 print(f'iteration [{k}/{self.k}]\t avg Loss: {loss_avg /2}')
             # backpropagation and weight update
-            torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/DMIntermidiateX.pt')
-            torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/DMIntermidiateY.pt')
+            torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateX.pt')
+            torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateY.pt')
             self.carbonTracker.epoch_end()
         #self.S_x = self.sigmoid(self.S_x) #after
         self.carbonTracker.stop()
@@ -154,11 +158,11 @@ class DistributionMatching():
 #dataSet      = 'chest_xray'
 dataset = 'Alzheimer_MRI'
 datatype     = ''
-costumLabel  = 'DMAfterLR10K100000'
+costumLabel  = 'DMAfterLR1K3000'
 homeDir = os.getcwd()
 print(f'Running at "{homeDir}"...')
 os.chdir(homeDir)
-batch_size   = 16
+batch_size   = 32
 ####### PARAMETERS #######
 print('preparing training data...')
 #Train data
@@ -174,13 +178,13 @@ train_Loader = torch.utils.data.DataLoader(train_Set,
 
 print('\nStaring Condensation...\n')
 
-model = M.ConvNet()
+model = M.ConvNet2()
 DM = DistributionMatching(model
-                        , batchSize = 16
-                        , syntheticSampleSize = 100 #0,1% - 4, 1% - 40, 10% - 402
-                        , k = 100000
+                        , batchSize = batch_size
+                        , syntheticSampleSize = 402 #0,1% - 4, 1% - 40, 10% - 402
+                        , k = 3000
                         , c = 2
-                        , lr_S = 10 # 10(ok?) 100(good)?
+                        , lr_S = 1 # 10(ok?) 100(good)?
                         , loss_Fun = nn.BCEWithLogitsLoss()
                         , DataSet = dataset
                         , customLabel = costumLabel)
@@ -191,7 +195,7 @@ DM = DistributionMatching(model
 x, y = DM.Generate(xTrain, yTrain)
 DM.save_output()
 
-#print(y[0])
+# #print(y[0])
 x = x.cpu().detach().numpy()
 plt.imshow(x[0][0], cmap = 'gray')
 #plt.savefig('Data/Loss_chest_xray/test/DMTest.png', dpi = 400, bbox_inches = 'tight')

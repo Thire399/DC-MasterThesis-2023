@@ -37,9 +37,9 @@ model.fc = nn.Linear(in_features = 2048, out_features = 1, bias = True)
 synthetic = True
 dataSet      = 'Alzheimer_MRI'
 #dataSet      = 'chest_xray'
-datatype     = 'DMAfter'
+datatype     = 'DMAfterLR1K1000'
 #'10PercentDistribution'
-costumLabel  = '800x800Full'#'SyntheticMRI128x128'#
+costumLabel  = 'DMAfterLR1K1000'#'SyntheticMRI128x128'#
 #costumLabel = '64x6410PercentDistribution'
 
 dev = False

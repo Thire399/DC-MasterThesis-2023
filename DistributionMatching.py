@@ -148,7 +148,7 @@ class DistributionMatching():
             torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateX.pt')
             torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateY.pt')
             self.carbonTracker.epoch_end()
-        #self.S_x = self.sigmoid(self.S_x) #after
+        self.S_x = self.sigmoid(self.S_x) #after
         self.carbonTracker.stop()
         return self.S_x, self.S_y
     

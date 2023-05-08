@@ -177,10 +177,10 @@ print('\nStaring Condensation...\n')
 model = M.ConvNet2()
 DM = DistributionMatching(model
                         , batchSize = batch_size
-                        , syntheticSampleSize = 402 #0,1% - 4, 1% - 40, 10% - 402
-                        , k = 3000
+                        , syntheticSampleSize = 40 #0,1% - 4, 1% - 40, 10% - 402
+                        , k = 20000
                         , c = 2
-                        , lr_S = 20 # 10(ok?) 100(good)?
+                        , lr_S = 1 # 10(ok?) 100(good)?
                         , loss_Fun = nn.BCEWithLogitsLoss()
                         , DataSet = dataset
                         , customLabel = costumLabel)

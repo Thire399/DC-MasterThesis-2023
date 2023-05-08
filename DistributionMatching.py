@@ -9,8 +9,17 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics.pairwise import rbf_kernel
 from carbontracker.tracker import CarbonTracker
-import gc
-
+# FOR PRINTINT #
+# ANSI escape codes for different colors
+RED = '\033[91m'
+GREEN = '\033[92m'
+YELLOW = '\033[93m'
+BLUE = '\033[94m'
+MAGENTA = '\033[95m'
+CYAN = '\033[96m'
+BOLD = "\u001b[1m"
+RESET = '\033[0m'
+########################
 
 warnings.filterwarnings("ignore")
 
@@ -89,11 +98,10 @@ class DistributionMatching():
         Tchange_class_index = torch.argmax(T_y).item()
         torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}BeforeX.pt')
         torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}BeforeY.pt')
-    
+        self.carbonTracker.epoch_start()    
         for k in range(self.k):
             loss_avg = 0
             self.optimizerS.zero_grad()
-            self.carbonTracker.epoch_start()
             #Sample paratameters for network. 
             self.model._init_weights()
             loss = 0 
@@ -101,7 +109,6 @@ class DistributionMatching():
             # images_syn_all = []
             if k % 5 == 0:
                 printout = True
-                print(f'K Iteration: {k}')
             else: printout = False
             for c in range(self.c):
                 if printout: 
@@ -115,7 +122,7 @@ class DistributionMatching():
                     S_DataX = (self.S_x[Schange_class_index:])
                     #sample w_c - omega for every class
                 if printout:
-                        print(f'\t\tSampling for class {c}... ')
+                        print(MAGENTA +  f'\t\tSampling for class {c}... ' + RESET)
                 T_BatchX = self.sampleRandom(T_DataX, batch_size = self.batch_size)
                 S_BatchX = self.sampleRandom(S_DataX, batch_size = self.batch_size)                
 
@@ -137,11 +144,12 @@ class DistributionMatching():
             self.optimizerS.step()
             loss_avg += loss.item()
             if printout:
-                print(f'iteration [{k}/{self.k}]\t avg Loss: {loss_avg /2}')
+                print(f'iteration [' + GREEN + f'{k}' + RESET + f'/{self.k}]\t avg Loss:' + GREEN+ f'{loss_avg /2}' + RESET)
             # backpropagation and weight update
             torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateX.pt')
             torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateY.pt')
-            self.carbonTracker.epoch_end()
+        
+        self.carbonTracker.epoch_end()
         self.S_x = self.sigmoid(self.S_x) #after
         self.carbonTracker.stop()
         return self.S_x, self.S_y

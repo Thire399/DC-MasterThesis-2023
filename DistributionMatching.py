@@ -81,7 +81,7 @@ class DistributionMatching():
             Returns
             Sigmoid(x.torch.tensor)
         """
-        return 1 / (1+torch.exp(x))
+        return 1 / (1+torch.exp(-x))
 
 
     def Generate(self, T_x, T_y,):
@@ -89,19 +89,16 @@ class DistributionMatching():
         Tchange_class_index = torch.argmax(T_y).item()
         torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}BeforeX.pt')
         torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}BeforeY.pt')
-        #embed = self.model.module.avgpool if torch.cuda.device_count() > 1 else self.model.avgpool # for GPU parallel
-        self.model.to(self.device)
-        loss_avg = 0
     
         for k in range(self.k):
+            loss_avg = 0
             self.optimizerS.zero_grad()
             self.carbonTracker.epoch_start()
             #Sample paratameters for network. 
             self.model._init_weights()
             loss = 0 
-             #try deleting this? 
-            images_real_all = []
-            images_syn_all = []
+            # images_real_all = []
+            # images_syn_all = []
             if k % 5 == 0:
                 printout = True
                 print(f'K Iteration: {k}')
@@ -123,24 +120,21 @@ class DistributionMatching():
                 S_BatchX = self.sampleRandom(S_DataX, batch_size = self.batch_size)                
 
                 T_aug, S_aug = self.aug_strategy(T_BatchX, S_BatchX)
-                images_real_all.append(T_aug) 
-                images_syn_all.append(S_aug)
+                T_output = self.model.embed(T_aug.type(torch.float32).to(self.device))
+                S_output = self.model.embed(S_aug.type(torch.float32).to(self.device))
+                loss += torch.sum((torch.mean(T_output, dim=0) - torch.mean(S_output, dim=0))**2)
+                # images_real_all.append(T_aug) 
+                # images_syn_all.append(S_aug)
+            # images_real_all = torch.cat(images_real_all, dim=0)
+            # images_syn_all = torch.cat(images_syn_all, dim=0)
 
-            images_real_all = torch.cat(images_real_all, dim=0)
-            images_syn_all = torch.cat(images_syn_all, dim=0)
-
-            T_output = self.model.embed(images_real_all.type(torch.float32).to(self.device))
-            S_output = self.model.embed(images_syn_all.type(torch.float32).to(self.device))
+            # T_output = self.model.embed(images_real_all.type(torch.float32).to(self.device))
+            # S_output = self.model.embed(images_syn_all.type(torch.float32).to(self.device))
 
             # compute the loss
-            loss += torch.sum((torch.mean(T_output, dim=0) - torch.mean(S_output, dim=0))**2)
-            #print((torch.mean(T_output, dim=0) - torch.mean(S_output, dim=0))**2)
-            #print(f'S mean{torch.mean(S_output, dim=0)}')
-            #print(f'T mean{torch.mean(T_output, dim=0)}')
+#            loss += torch.sum((torch.mean(T_output, dim=0) - torch.mean(S_output, dim=0))**2)
             loss.backward()
             self.optimizerS.step()
-            #with torch.no_grad():
-                #self.S_x.sigmoid_()
             loss_avg += loss.item()
             if printout:
                 print(f'iteration [{k}/{self.k}]\t avg Loss: {loss_avg /2}')
@@ -158,7 +152,7 @@ class DistributionMatching():
 #dataSet      = 'chest_xray'
 dataset = 'Alzheimer_MRI'
 datatype     = ''
-costumLabel  = 'DMAfterLR1K3000'
+costumLabel  = 'DMAfterLR1K3k'
 homeDir = os.getcwd()
 print(f'Running at "{homeDir}"...')
 os.chdir(homeDir)
@@ -170,12 +164,6 @@ xTrain = torch.load(f'Data/Proccesed/{dataset}/trainX.pt')
 yTrain = torch.load(f'Data/Proccesed/{dataset}/trainY.pt')
 #xTrain = xTrain.repeat(1, 3, 1, 1)
 
-train_Set = torch.utils.data.TensorDataset(xTrain, yTrain)
-train_Loader = torch.utils.data.DataLoader(train_Set,
-                                        batch_size = batch_size,
-                                        shuffle = True,
-                                        num_workers = 4)
-
 print('\nStaring Condensation...\n')
 
 model = M.ConvNet2()
@@ -184,7 +172,7 @@ DM = DistributionMatching(model
                         , syntheticSampleSize = 402 #0,1% - 4, 1% - 40, 10% - 402
                         , k = 3000
                         , c = 2
-                        , lr_S = 1 # 10(ok?) 100(good)?
+                        , lr_S = 20 # 10(ok?) 100(good)?
                         , loss_Fun = nn.BCEWithLogitsLoss()
                         , DataSet = dataset
                         , customLabel = costumLabel)

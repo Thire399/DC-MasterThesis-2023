@@ -14,8 +14,8 @@ os.chdir(homeDir)
 
 ####### PARAMETERS #######
 
-#model = models.densenet169(pretrained = False)
-#model.classifier = nn.Linear(in_features=1664, out_features = 1, bias=True)
+model = models.densenet169(pretrained = False)
+model.classifier = nn.Linear(in_features=1664, out_features = 1, bias=True)
 
 #model = models.alexnet(pretrained = False)
 #model.classifier[6] = nn.Linear(in_features=4096, out_features = 1, bias=True)
@@ -24,8 +24,8 @@ os.chdir(homeDir)
 #model = models.inception_v3(pretrained = False)
 #model.fc = nn.Linear(in_features=2048, out_features = 1, bias=True)
 
-model = models.resnet50(pretrained = False)
-model.fc = nn.Linear(in_features = 2048, out_features = 1, bias = True)
+#model = models.resnet50(pretrained = False)
+#model.fc = nn.Linear(in_features = 2048, out_features = 1, bias = True)
 
 #model.fc.add_module('Sigmoid', nn.Sigmoid())
 #model = M.UNet(enc_chs = (3, 64, 128, 256, 512, 1024)
@@ -37,9 +37,9 @@ model.fc = nn.Linear(in_features = 2048, out_features = 1, bias = True)
 synthetic = True
 dataSet      = 'Alzheimer_MRI'
 #dataSet      = 'chest_xray'
-datatype     = 'DMAfterLR1K1000_2k16'
+datatype     = 'DMLR1K20k'
 #'10PercentDistribution'
-costumLabel  = 'DMAfterLR1K1000_2k16'#'SyntheticMRI128x128'#
+costumLabel  = 'DMLR1K20k'#'SyntheticMRI128x128'#
 #costumLabel = '64x6410PercentDistribution'
 
 dev = False

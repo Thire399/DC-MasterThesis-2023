@@ -48,7 +48,7 @@ class GradientMatching():
         os.makedirs(f'{self.savePath}/CarbonLogs', exist_ok = True)
         self.customLabel = customLabel
         self.lr_S = lr_S
-        self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 1, 28, 28)), requires_grad = True) #Totally random data
+        self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 1, 128, 128)), requires_grad = True) #Totally random data
         self.S_y = Gen_Y(self.S_x.shape[0]).type(torch.float32)
         self.loss_Fun = loss_Fun.to(self.device)
         self.optimizerT = optim.SGD(self.model.parameters(), lr = self.lr_Theta, momentum = 0.5)
@@ -61,15 +61,6 @@ class GradientMatching():
                             )
         print(GREEN + BOLD + f'Setup:\n\tUsing Compute: {self.device}\n\tk = {k}\n\tt = {self.t}\n\tc = {c}\n\tTheta inner Steps = {self.cT_step}\n\tLearning Rate S: = {lr_S}',
                             f'\tLearning Rate Theta = {lr_Theta}' + RESET)
-
-    def sigmoid(self, x):
-        """Sigmoid Activation Function
-            Arguments:
-            x.torch.tensor
-            Returns
-            Sigmoid(x.torch.tensor)
-        """
-        return 1 / (1+torch.exp(-x))
     def Distance(self, A, B):
         _sum_ = 0
         for i in range(len(A)):
@@ -83,7 +74,7 @@ class GradientMatching():
         index = np.random.randint(data.shape[0], size = batch_size)
         return torch.stack([data[i] for i in index])
     
-    def GetGradient(self, x, y):
+    def GetGradient(self, x, y): # Deprecated for better function
         self.model.eval()
         out = self.model(x.to(self.device))
         out = out.flatten()
@@ -119,7 +110,6 @@ class GradientMatching():
 
     def match_loss(self, gw_syn, gw_real, args): # Taken from the paper.
         #dis = torch.tensor(0.0).to(self.device)
-
         if args == 'ours':
             for ig in range(len(gw_real)):
                 gwr = gw_real[ig]
@@ -246,7 +236,7 @@ class GradientMatching():
                 # Training on whole S
                 for steps in range(self.cT_step):
                     if steps%25 == 0 and printout:
-                        print(GREEN + f'C-inner: '+ RESET + RED + f'{steps}/{self.cT_step}'+ RESET)
+                        print('\t\t'+GREEN + f'C-inner: '+ RESET + RED + f'{steps}/{self.cT_step}'+ RESET)
 
                     for batch, (data, target) in enumerate(S_loader, 1):
                         self.optimizerT.zero_grad() # a clean up step for PyTorch
@@ -315,7 +305,6 @@ yTrain = torch.load(f'Data/Proccesed/{dataset}/trainY.pt')
 # #xTrain = xTrain.repeat(1, 3, 1, 1)
 
 print(RED + '\nStaring Condensation...\n' + RESET )
-#torch.manual_seed(0)
 model = M.ConvNet()
 GM = GradientMatching(model
                         , batchSize = batch_size #batch for updating model.
@@ -323,7 +312,7 @@ GM = GradientMatching(model
                         , k = 1000
                         , c = 2
                         , lr_Theta = 0.01
-                        , lr_S = 1
+                        , lr_S = 0.1
                         , loss_Fun = nn.BCEWithLogitsLoss()
                         , DataSet = dataset
                         , customLabel = costumLabel)
@@ -333,12 +322,3 @@ x, y, d = GM.Generate(xTrain, yTrain)
 GM.save_output(after = True)
 torch.save(d, f=f'Data/Synthetic_Alzheimer_MRI/{costumLabel}testDistance.pt')
 
-#x = x.cpu().detach().numpy()
-#plt.plot(range(len(d)), d)
-#plt.show()
-
-
-#print(y[0])
-#plt.imshow(x[0][0], cmap = 'gray')
-##plt.savefig('Data/Loss_chest_xray/test/Test.png', dpi = 400, bbox_inches = 'tight')
-#plt.show()

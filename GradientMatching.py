@@ -171,7 +171,10 @@ class GradientMatching():
         return None
 
     def Generate(self, T_x, T_y):
-        #Note: assumes binary classification.        
+        #Note: assumes binary classification.
+        Schange_class_index = torch.argmax(self.S_y).item()
+        Tchange_class_index = torch.argmax(T_y).item()
+        
         torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}BeforeX.pt')
         torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}BeforeY.pt')
         DistanceLst = []
@@ -189,10 +192,16 @@ class GradientMatching():
                 for c in range(self.c):
                     if printout:
                         print(MAGENTA + '\t\tGenerating Batches...' + RESET )
-                    T_DataX = torch.stack([T_x[i] for i in range(len(T_y)) if T_y[i] == c])
-                    T_DataY = torch.stack([T_y[i] for i in range(len(T_y)) if T_y[i] == c])
-                    S_DataX = torch.stack([self.S_x [i] for i in range(len(self.S_y)) if self.S_y[i] == c])
-                    S_DataY = torch.stack([self.S_y [i] for i in range(len(self.S_y)) if self.S_y[i] == c])
+                    if c == 0:
+                        T_DataX = torch.tensor(T_x[:Tchange_class_index])
+                        T_DataY = torch.tensor(T_y[:Tchange_class_index])
+                        S_DataX = torch.tensor(self.S_x[:Schange_class_index])
+                        S_DataY = torch.tensor(self.S_y[:Schange_class_index])
+                    else:
+                        T_DataX = torch.tensor(T_x[Tchange_class_index:])
+                        T_DataY = torch.tensor(T_y[Tchange_class_index:])
+                        S_DataX = torch.tensor(self.S_x[Schange_class_index:])
+                        S_DataY = torch.tensor(self.S_y[Schange_class_index:])
                     if printout:
                         print(f'\t\t\tSampling for class:' + RED + f' {c}...' + RESET)
                     T_BatchX = self.sampleRandom(T_DataX, batch_size = self.batch_size)
@@ -257,7 +266,7 @@ class GradientMatching():
             torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateY.pt')
             self.carbonTracker.epoch_end()
         self.carbonTracker.stop()
-        #self.S_x = self.sigmoid(self.S_x)
+
         return self.S_x, self.S_y, DistanceLst
 
 
@@ -277,40 +286,41 @@ print(RED + 'Preparing training data...' + RESET)
 #Train data
 
 ########################################## TESTING MNIST DATA #########################################################################
-import torch
-from torchvision import datasets, transforms
+# import torch
+# from torchvision import datasets, transforms
 
-# Set the path where the MNIST data will be stored
+# # Set the path where the MNIST data will be stored
 
-# Define the transformation to apply to the data
-transform = transforms.Compose([
-    transforms.ToTensor(),  # Convert the image to a tensor
-    transforms.Normalize((0.5,), (0.5,))  # Normalize the image data
-])
+# # Define the transformation to apply to the data
+# transform = transforms.Compose([
+#     transforms.ToTensor(),  # Convert the image to a tensor
+#     transforms.Normalize((0.5,), (0.5,))  # Normalize the image data
+# ])
 
-# Download and load the MNIST training set
-train_dataset = datasets.MNIST(root="./mnist_data", train=True, download=True, transform=transform)
+# # Download and load the MNIST training set
+# train_dataset = datasets.MNIST(root="./mnist_data", train=True, download=True, transform=transform)
 
-# Filter the training dataset to include only class 0 and 1
-train_dataset_filtered = torch.utils.data.Subset(train_dataset, [i for i, (_, label) in enumerate(train_dataset) if label == 0 or label == 1])
-train_data = torch.stack([data for data, label in train_dataset_filtered])
-train_labels = torch.tensor([label for _, label in train_dataset_filtered])
-sorted_indices = torch.argsort(train_labels)
-xTrain = train_data[sorted_indices]
-yTrain = train_labels[sorted_indices]
+# # Filter the training dataset to include only class 0 and 1
+# train_dataset_filtered = torch.utils.data.Subset(train_dataset, [i for i, (_, label) in enumerate(train_dataset) if label == 0 or label == 1])
+# train_data = torch.stack([data for data, label in train_dataset_filtered])
+# train_labels = torch.tensor([label for _, label in train_dataset_filtered])
+# sorted_indices = torch.argsort(train_labels)
+# xTrain = train_data[sorted_indices]
+# yTrain = train_labels[sorted_indices]
 # Create data loaders for batch processing
 
 ###################################################################################################################
-#xTrain = torch.load(f'Data/Proccesed/{dataset}/trainX.pt')
-#yTrain = torch.load(f'Data/Proccesed/{dataset}/trainY.pt')
+xTrain = torch.load(f'Data/Proccesed/{dataset}/trainX.pt')
+yTrain = torch.load(f'Data/Proccesed/{dataset}/trainY.pt')
+# #xTrain = xTrain.repeat(1, 3, 1, 1)
 
 print(RED + '\nStaring Condensation...\n' + RESET )
 #torch.manual_seed(0)
 model = M.ConvNet()
 GM = GradientMatching(model
                         , batchSize = batch_size #batch for updating model.
-                        , syntheticSampleSize = 100
-                        , k = 100
+                        , syntheticSampleSize = 402
+                        , k = 1000
                         , c = 2
                         , lr_Theta = 0.01
                         , lr_S = 1

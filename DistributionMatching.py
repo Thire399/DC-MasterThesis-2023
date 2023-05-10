@@ -91,6 +91,13 @@ class DistributionMatching():
             Sigmoid(x.torch.tensor)
         """
         return 1 / (1+torch.exp(-x))
+    def min_max_normalization(self, images_tensor): 
+        # Calculate the minimum and maximum values across all images 
+        min_value = torch.min(images_tensor) 
+        max_value = torch.max(images_tensor) 
+        # Normalize the tensor using min-max normalization 
+        normalized_tensor = (images_tensor - min_value) / (max_value - min_value) 
+        return normalized_tensor
 
 
     def Generate(self, T_x, T_y,):
@@ -146,11 +153,11 @@ class DistributionMatching():
             if printout:
                 print(f'iteration [' + GREEN + f'{k}' + RESET + f'/{self.k}]\t avg Loss:' + GREEN+ f'{loss_avg /2}' + RESET)
             # backpropagation and weight update
-            torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateX.pt')
-            torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateY.pt')
+            torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/andrea/{self.customLabel}IntermidiateX.pt')
+            torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/andrea/{self.customLabel}IntermidiateY.pt')
         
         self.carbonTracker.epoch_end()
-        self.S_x = self.sigmoid(self.S_x) #after
+        #self.S_x = self.min_max_normalization(self.S_x) #after
         self.carbonTracker.stop()
         return self.S_x, self.S_y
     
@@ -160,11 +167,11 @@ class DistributionMatching():
 #dataSet      = 'chest_xray'
 dataset = 'Alzheimer_MRI'
 datatype     = ''
-costumLabel  = 'DMAfterLR1K3k'
+costumLabel  = 'DMAfter_LR01_k20_nor_2016_bs10'
 homeDir = os.getcwd()
 print(f'Running at "{homeDir}"...')
 os.chdir(homeDir)
-batch_size   = 32
+batch_size   = 10
 ####### PARAMETERS #######
 print('preparing training data...')
 #Train data
@@ -177,7 +184,7 @@ print('\nStaring Condensation...\n')
 model = M.ConvNet2()
 DM = DistributionMatching(model
                         , batchSize = batch_size
-                        , syntheticSampleSize = 40 #0,1% - 4, 1% - 40, 10% - 402
+                        , syntheticSampleSize = 402 #0,1% - 4, 1% - 40, 10% - 402 30% - 1206, 50% - 
                         , k = 20000
                         , c = 2
                         , lr_S = 1 # 10(ok?) 100(good)?

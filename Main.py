@@ -37,25 +37,25 @@ model.classifier = nn.Linear(in_features=1664, out_features = 1, bias=True)
 synthetic = True
 dataSet      = 'Alzheimer_MRI'
 #dataSet      = 'chest_xray'
-datatype     = 'DMLR1K20k'
+datatype     = 'DMAfter_LR01_k20_nor_2016_bs10'
 #'10PercentDistribution'
-costumLabel  = 'DMLR1K20k'#'SyntheticMRI128x128'#
+costumLabel  = 'SyntheticMRI128x128_bs10_adam_lr5'#DMAfter_LR01_k20
 #costumLabel = '64x6410PercentDistribution'
 
-dev = False
+dev = True
 #model parameters
 patience     = 10 #
 delta        = 1e-4
 epochs       = 400
 
-learningRate = 1e-3
+learningRate = 1e-5
 optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.9)
 #optimizer    =  optim.Adam(model.parameters(), lr = learningRate)
 loss_Fun     = nn.BCEWithLogitsLoss()
-batch_size   = 32
+batch_size   = 10
 saveModel    = True
 figSave      = True
-highRes      = False
+highRes      = False #only chest
 ####### PARAMETERS #######
 
 ####### Main Calls ########
@@ -63,13 +63,21 @@ def sigmoid(x):
     #print(1/(1+torch.exp(-x)))
     return 1 / (1+torch.exp(-x))
 
+def min_max_normalization(images_tensor): 
+    # Calculate the minimum and maximum values across all images 
+    min_value = torch.min(images_tensor) 
+    max_value = torch.max(images_tensor) 
+    # Normalize the tensor using min-max normalization 
+    normalized_tensor = (images_tensor - min_value) / (max_value - min_value) 
+    return normalized_tensor
+    
 def __main__():
         print('Starting...')
         if synthetic:
             xTrain = torch.load(f'Data/Synthetic_{dataSet}/' + datatype + 'X.pt')
             yTrain = torch.load(f'Data/Synthetic_{dataSet}/' + datatype + 'Y.pt')
             with torch.no_grad():
-                xTrain = xTrain.repeat(1,3,1,1).sigmoid_()
+                xTrain = min_max_normalization(xTrain.repeat(1,3,1,1))
         elif highRes:
             import Data_processing as DP
             print('High resulotion...\nGetting file names...')

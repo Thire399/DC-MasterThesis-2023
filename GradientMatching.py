@@ -73,7 +73,7 @@ class GradientMatching():
     
     def sampleRandom(self, data, batch_size):
         index = np.random.randint(data.shape[0], size = batch_size)
-        return torch.stack([data[i] for i in index])
+        return data[index]
     
     def GetGradient(self, x, y): # Deprecated for better function
         self.model.eval()
@@ -183,20 +183,16 @@ class GradientMatching():
                 for c in range(self.c):
                     if printout:
                         print(MAGENTA + '\t\tGenerating Batches...' + RESET )
-                    T_DataX = torch.stack([T_x[i] for i in range(len(T_y)) if T_y[i] == c])
-                    T_DataY = torch.stack([T_y[i] for i in range(len(T_y)) if T_y[i] == c])
-                    S_DataX = torch.stack([self.S_x [i] for i in range(len(self.S_y)) if self.S_y[i] == c])
-                    S_DataY = torch.stack([self.S_y [i] for i in range(len(self.S_y)) if self.S_y[i] == c])
-                    # if c == 0:
-                    #     T_DataX = torch.tensor(T_x[:Tchange_class_index])
-                    #     T_DataY = torch.tensor(T_y[:Tchange_class_index])
-                    #     S_DataX = torch.tensor(self.S_x[:Schange_class_index])
-                    #     S_DataY = torch.tensor(self.S_y[:Schange_class_index])
-                    # else:
-                    #     T_DataX = torch.tensor(T_x[Tchange_class_index:])
-                    #     T_DataY = torch.tensor(T_y[Tchange_class_index:])
-                    #     S_DataX = torch.tensor(self.S_x[Schange_class_index:])
-                    #     S_DataY = torch.tensor(self.S_y[Schange_class_index:])
+                    if c == 0:
+                        T_DataX = T_x[:Tchange_class_index]
+                        T_DataY = T_y[:Tchange_class_index]
+                        S_DataX = self.S_x[:Schange_class_index]
+                        S_DataY = self.S_y[:Schange_class_index]
+                    else:
+                        T_DataX = T_x[Tchange_class_index:]
+                        T_DataY = T_y[Tchange_class_index:]
+                        S_DataX = self.S_x[Schange_class_index:]
+                        S_DataY = self.S_y[Schange_class_index:]
                     if printout:
                         print(f'\t\t\tSampling for class:' + RED + f' {c}...' + RESET)
                     T_BatchX = self.sampleRandom(T_DataX, batch_size = self.batch_size)
@@ -220,6 +216,7 @@ class GradientMatching():
                 s_loss.backward()
                 self.optimizerS.step()
                 DistanceLst.append(s_loss.item())
+                print(torch.sum(torch.sum(self.S_x)))
                 image_syn_train, label_syn_train = copy.deepcopy(self.S_x), copy.deepcopy(self.S_y)
                 Whole_S = torch.utils.data.TensorDataset(image_syn_train, label_syn_train)
                 S_loader = torch.utils.data.DataLoader(Whole_S

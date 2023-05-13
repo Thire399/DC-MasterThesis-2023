@@ -110,6 +110,45 @@ class resnet(nn.Module):
         return x
 
 
+######################################################
+class ResNet2(nn.Module):
+    def __init__(self, num_classes=1):
+        super(ResNet2, self).__init__()
+
+        self.conv1 = nn.Conv2d(1, 128, kernel_size=3, padding=1)
+        self.norm1 = nn.InstanceNorm2d(128)
+        self.relu1 = nn.ReLU(inplace=True)
+
+        self.conv2 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        self.norm2 = nn.InstanceNorm2d(128)
+        self.relu2 = nn.ReLU(inplace=True)
+
+        self.conv3 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        self.norm3 = nn.InstanceNorm2d(128)
+        self.relu3 = nn.ReLU(inplace=True)
+
+        self.fc = nn.Linear(128 * 128 * 128, num_classes)
+
+    def forward(self, x):
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.relu1(out)
+
+        out = self.conv2(out)
+        out = self.norm2(out)
+        out = self.relu2(out)
+
+        out = self.conv3(out)
+        out = self.norm3(out)
+        out = self.relu3(out)
+
+        out = out.view(out.size(0), -1)
+        out = self.fc(out)
+
+        return out
+
+
+
 ########## Condensation model from the paper ##############
 
 class ConvNet(nn.Module):

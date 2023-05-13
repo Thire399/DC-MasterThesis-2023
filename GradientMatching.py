@@ -10,7 +10,7 @@ import torch.optim as optim
 from sklearn.metrics.pairwise import rbf_kernel
 from carbontracker.tracker import CarbonTracker
 import copy
-
+import sys
 # FOR PRINTINT #
 # ANSI escape codes for different colors
 RED = '\033[91m'
@@ -46,9 +46,10 @@ class GradientMatching():
         self.lr_Theta = lr_Theta
         self.savePath = f'Data/Synthetic_{DataSet}'
         os.makedirs(f'{self.savePath}/CarbonLogs', exist_ok = True)
+        self.dataset = DataSet
         self.customLabel = customLabel
         self.lr_S = lr_S
-        self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 1, 128, 128)), requires_grad = True) #Totally random data
+        self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 1, 28, 28)), requires_grad = True) #Totally random data
         self.S_y = Gen_Y(self.S_x.shape[0]).type(torch.float32)
         self.loss_Fun = loss_Fun.to(self.device)
         self.optimizerT = optim.SGD(self.model.parameters(), lr = self.lr_Theta, momentum = 0.5)
@@ -165,8 +166,8 @@ class GradientMatching():
         Schange_class_index = torch.argmax(self.S_y).item()
         Tchange_class_index = torch.argmax(T_y).item()
         
-        torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}BeforeX.pt')
-        torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}BeforeY.pt')
+        torch.save(self.S_x, f = f'Data/Synthetic_{self.dataset}/{self.customLabel}BeforeX.pt')
+        torch.save(self.S_y, f = f'Data/Synthetic_{self.dataset}/{self.customLabel}BeforeY.pt')
         DistanceLst = []
         T_y = T_y.type(torch.float32)
         for k in range(self.k):
@@ -182,16 +183,20 @@ class GradientMatching():
                 for c in range(self.c):
                     if printout:
                         print(MAGENTA + '\t\tGenerating Batches...' + RESET )
-                    if c == 0:
-                        T_DataX = torch.tensor(T_x[:Tchange_class_index])
-                        T_DataY = torch.tensor(T_y[:Tchange_class_index])
-                        S_DataX = torch.tensor(self.S_x[:Schange_class_index])
-                        S_DataY = torch.tensor(self.S_y[:Schange_class_index])
-                    else:
-                        T_DataX = torch.tensor(T_x[Tchange_class_index:])
-                        T_DataY = torch.tensor(T_y[Tchange_class_index:])
-                        S_DataX = torch.tensor(self.S_x[Schange_class_index:])
-                        S_DataY = torch.tensor(self.S_y[Schange_class_index:])
+                    T_DataX = torch.stack([T_x[i] for i in range(len(T_y)) if T_y[i] == c])
+                    T_DataY = torch.stack([T_y[i] for i in range(len(T_y)) if T_y[i] == c])
+                    S_DataX = torch.stack([self.S_x [i] for i in range(len(self.S_y)) if self.S_y[i] == c])
+                    S_DataY = torch.stack([self.S_y [i] for i in range(len(self.S_y)) if self.S_y[i] == c])
+                    # if c == 0:
+                    #     T_DataX = torch.tensor(T_x[:Tchange_class_index])
+                    #     T_DataY = torch.tensor(T_y[:Tchange_class_index])
+                    #     S_DataX = torch.tensor(self.S_x[:Schange_class_index])
+                    #     S_DataY = torch.tensor(self.S_y[:Schange_class_index])
+                    # else:
+                    #     T_DataX = torch.tensor(T_x[Tchange_class_index:])
+                    #     T_DataY = torch.tensor(T_y[Tchange_class_index:])
+                    #     S_DataX = torch.tensor(self.S_x[Schange_class_index:])
+                    #     S_DataY = torch.tensor(self.S_y[Schange_class_index:])
                     if printout:
                         print(f'\t\t\tSampling for class:' + RED + f' {c}...' + RESET)
                     T_BatchX = self.sampleRandom(T_DataX, batch_size = self.batch_size)
@@ -215,14 +220,6 @@ class GradientMatching():
                 s_loss.backward()
                 self.optimizerS.step()
                 DistanceLst.append(s_loss.item())
-                #     t_grad = self.GetGradient(T_BatchX, T_BatchY)
-                #     s_grad = self.GetGradient(S_BatchX, S_BatchY)
-                #     self.optimizerS.zero_grad()
-                    # D = self.Distance(t_grad, s_grad)
-                    # D.backward()
-
-                    #self.optimizerS.step()
-                    #DistanceLst.append(D.detach().cpu().numpy())
                 image_syn_train, label_syn_train = copy.deepcopy(self.S_x), copy.deepcopy(self.S_y)
                 Whole_S = torch.utils.data.TensorDataset(image_syn_train, label_syn_train)
                 S_loader = torch.utils.data.DataLoader(Whole_S
@@ -252,8 +249,8 @@ class GradientMatching():
                                         batch * len(data), len(S_loader.dataset),
                                         (100. * batch) / len(S_loader),
                                         np.mean(tempLossLst)))
-            torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateX.pt')
-            torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateY.pt')
+            torch.save(self.S_x, f = f'Data/Synthetic_{self.dataset}/{self.customLabel}IntermidiateX.pt')
+            torch.save(self.S_y, f = f'Data/Synthetic_{self.dataset}/{self.customLabel}IntermidiateY.pt')
             self.carbonTracker.epoch_end()
         self.carbonTracker.stop()
 
@@ -264,7 +261,8 @@ class GradientMatching():
 ####### PARAMETERS #######
 #Data parameters
 #dataSet      = 'chest_xray'
-dataset = 'Alzheimer_MRI'
+dataset = 'MNIST'
+#dataset = 'Alzheimer_MRI'
 datatype     = ''
 costumLabel  = 'MNIST'
 homeDir = os.getcwd()
@@ -273,33 +271,8 @@ os.chdir(homeDir)
 batch_size   = 32
 ####### PARAMETERS #######
 print(RED + 'Preparing training data...' + RESET)
+
 #Train data
-
-########################################## TESTING MNIST DATA #########################################################################
-# import torch
-# from torchvision import datasets, transforms
-
-# # Set the path where the MNIST data will be stored
-
-# # Define the transformation to apply to the data
-# transform = transforms.Compose([
-#     transforms.ToTensor(),  # Convert the image to a tensor
-#     transforms.Normalize((0.5,), (0.5,))  # Normalize the image data
-# ])
-
-# # Download and load the MNIST training set
-# train_dataset = datasets.MNIST(root="./mnist_data", train=True, download=True, transform=transform)
-
-# # Filter the training dataset to include only class 0 and 1
-# train_dataset_filtered = torch.utils.data.Subset(train_dataset, [i for i, (_, label) in enumerate(train_dataset) if label == 0 or label == 1])
-# train_data = torch.stack([data for data, label in train_dataset_filtered])
-# train_labels = torch.tensor([label for _, label in train_dataset_filtered])
-# sorted_indices = torch.argsort(train_labels)
-# xTrain = train_data[sorted_indices]
-# yTrain = train_labels[sorted_indices]
-# Create data loaders for batch processing
-
-###################################################################################################################
 xTrain = torch.load(f'Data/Proccesed/{dataset}/trainX.pt')
 yTrain = torch.load(f'Data/Proccesed/{dataset}/trainY.pt')
 # #xTrain = xTrain.repeat(1, 3, 1, 1)
@@ -308,8 +281,8 @@ print(RED + '\nStaring Condensation...\n' + RESET )
 model = M.ConvNet()
 GM = GradientMatching(model
                         , batchSize = batch_size #batch for updating model.
-                        , syntheticSampleSize = 402
-                        , k = 1000
+                        , syntheticSampleSize = 122
+                        , k = 10
                         , c = 2
                         , lr_Theta = 0.01
                         , lr_S = 0.1
@@ -320,5 +293,5 @@ GM = GradientMatching(model
 
 x, y, d = GM.Generate(xTrain, yTrain)
 GM.save_output(after = True)
-torch.save(d, f=f'Data/Synthetic_Alzheimer_MRI/{costumLabel}testDistance.pt')
+torch.save(d, f=f'Data/Synthetic_{dataset}/{costumLabel}testDistance.pt')
 

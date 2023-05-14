@@ -215,7 +215,6 @@ class GradientMatching():
                 self.optimizerS.zero_grad()
                 s_loss.backward()
                 self.optimizerS.step()
-                print(torch.sum(torch.sum(self.S_x)))
                 DistanceLst.append(s_loss.item())
                 image_syn_train, label_syn_train = copy.deepcopy(self.S_x), copy.deepcopy(self.S_y)
                 Whole_S = torch.utils.data.TensorDataset(image_syn_train, label_syn_train)

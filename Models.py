@@ -279,6 +279,56 @@ class ConvNet2(nn.Module):
 
 ##########################################################
 
+
+class DenseNet2(nn.Module):
+    def __init__(self, num_classes=1):
+        super(DenseNet2, self).__init__()
+
+        self.conv1 = nn.Conv2d(1, 128, kernel_size=3, padding=1)
+        self.norm1 = nn.InstanceNorm2d(128)
+        self.relu1 = nn.ReLU(inplace=True)
+
+        self.denseblock1 = self._make_dense_block(128, 128)
+        self.denseblock2 = self._make_dense_block(128, 128)
+        self.denseblock3 = self._make_dense_block(128, 128)
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(128, num_classes)
+
+    def forward(self, x):
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.relu1(out)
+
+        out = self.denseblock1(out)
+        out = self.denseblock2(out)
+        out = self.denseblock3(out)
+
+        out = self.avgpool(out)
+        out = out.view(out.size(0), -1)
+        out = self.fc(out)
+
+        return out
+
+    def _make_dense_block(self, in_channels, out_channels):
+        layers = []
+        layers.append(nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1))
+        layers.append(nn.InstanceNorm2d(out_channels))
+        layers.append(nn.ReLU(inplace=True))
+        layers.append(nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1))
+        layers.append(nn.InstanceNorm2d(out_channels))
+        layers.append(nn.ReLU(inplace=True))
+        layers.append(nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1))
+        layers.append(nn.InstanceNorm2d(out_channels))
+        layers.append(nn.ReLU(inplace=True))
+        return nn.Sequential(*layers)
+    
+
+    #####################################
+
+
+
+
 ######## Early Stopping ############
 #The early stopping class is from here this github, and the credit goes to him.
 # I only use it for early stopping.

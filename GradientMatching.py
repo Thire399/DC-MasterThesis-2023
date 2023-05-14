@@ -49,7 +49,7 @@ class GradientMatching():
         self.dataset = DataSet
         self.customLabel = customLabel
         self.lr_S = lr_S
-        self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 1, 28, 28)), requires_grad = True) #Totally random data
+        self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 1, 128, 128)), requires_grad = True) #Totally random data
         self.S_y = Gen_Y(self.S_x.shape[0]).type(torch.float32)
         self.loss_Fun = loss_Fun.to(self.device)
         self.optimizerT = optim.SGD(self.model.parameters(), lr = self.lr_Theta, momentum = 0.5)
@@ -110,7 +110,7 @@ class GradientMatching():
         return dis
 
     def match_loss(self, gw_syn, gw_real, args): # Taken from the paper.
-        #dis = torch.tensor(0.0).to(self.device)
+        dis = torch.tensor(0.0).to(self.device)
         if args == 'ours':
             for ig in range(len(gw_real)):
                 gwr = gw_real[ig]
@@ -210,13 +210,13 @@ class GradientMatching():
                     output_syn = output_syn.flatten()
                     loss_syn = self.loss_Fun(output_syn, S_BatchY.to(self.device))
                     gw_syn = torch.autograd.grad(loss_syn, list(self.model.parameters()), create_graph=True)
-                    s_loss += self.match_loss(gw_syn, gw_real, 'cos')
+                    s_loss += self.match_loss(gw_syn, gw_real, 'ours')
                     
                 self.optimizerS.zero_grad()
                 s_loss.backward()
                 self.optimizerS.step()
-                DistanceLst.append(s_loss.item())
                 print(torch.sum(torch.sum(self.S_x)))
+                DistanceLst.append(s_loss.item())
                 image_syn_train, label_syn_train = copy.deepcopy(self.S_x), copy.deepcopy(self.S_y)
                 Whole_S = torch.utils.data.TensorDataset(image_syn_train, label_syn_train)
                 S_loader = torch.utils.data.DataLoader(Whole_S
@@ -229,7 +229,7 @@ class GradientMatching():
                 self.model.train()
                 # Training on whole S
                 for steps in range(self.cT_step):
-                    if steps%25 == 0 and printout:
+                    if steps%10 == 0 and printout:
                         print('\t\t'+GREEN + f'C-inner: '+ RESET + RED + f'{steps}/{self.cT_step}'+ RESET)
 
                     for batch, (data, target) in enumerate(S_loader, 1):
@@ -240,8 +240,8 @@ class GradientMatching():
                         loss_M.backward(retain_graph = True)
                         self.optimizerT.step()
                         tempLossLst.append(loss_M.item())
-                        if printout and (steps == 0 or steps == self.cT_step -1):
-                            if batch % 2 == 0: #For printing
+                        if printout:
+                            if batch % 2 == 0 and printout == True and steps%10 == 0 : #For printing
                                 print(4*' ', '===> Training (t): [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                                         batch * len(data), len(S_loader.dataset),
                                         (100. * batch) / len(S_loader),
@@ -258,10 +258,10 @@ class GradientMatching():
 ####### PARAMETERS #######
 #Data parameters
 #dataSet      = 'chest_xray'
-dataset = 'MNIST'
-#dataset = 'Alzheimer_MRI'
+#dataset = 'MNIST'
+dataset = 'Alzheimer_MRI'
 datatype     = ''
-costumLabel  = 'MNIST'
+costumLabel  = 'GMAlzheimer_K1000_40_ours_run2'
 homeDir = os.getcwd()
 print(GREEN  +f'Running at "{homeDir}"...' + RESET)
 os.chdir(homeDir)
@@ -278,8 +278,8 @@ print(RED + '\nStaring Condensation...\n' + RESET )
 model = M.ConvNet()
 GM = GradientMatching(model
                         , batchSize = batch_size #batch for updating model.
-                        , syntheticSampleSize = 122
-                        , k = 10
+                        , syntheticSampleSize = 40
+                        , k = 1000
                         , c = 2
                         , lr_Theta = 0.01
                         , lr_S = 0.1
@@ -289,6 +289,6 @@ GM = GradientMatching(model
 
 
 x, y, d = GM.Generate(xTrain, yTrain)
-GM.save_output(after = True)
+GM.save_output(after = False)
 torch.save(d, f=f'Data/Synthetic_{dataset}/{costumLabel}testDistance.pt')
 

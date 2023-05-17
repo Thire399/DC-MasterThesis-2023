@@ -41,12 +41,12 @@ synthetic = True
 dataSet      = 'Alzheimer_MRI'
 #dataSet = 'MNIST'
 #dataSet      = 'chest_xray'
-datatype     = 'NEW_DMAfterAL_LR1_k20_100_even_402_2' #    DMAfter_LR1_k20_402_even  DMAfter_LR01_k20_nor_2016_bs10
+datatype     = 'GMAlzheimer_K1000_4_ours_run3' #    DMAfter_LR1_k20_402_even  DMAfter_LR01_k20_nor_2016_bs10
 #'10PercentDistribution'
-costumLabel  = 'NEW_DMAfterAL_LR1_k20_100_even_402_2_dens'#DMAfter_LR01_k20   DMAfterMNIST_LR1_k20_100_evenBeforeX
+costumLabel  = 'GMAlzheimer_K1000_4_ours_run3'#DMAfter_LR01_k20   DMAfterMNIST_LR1_k20_100_evenBeforeX
 #costumLabel = '64x6410PercentDistributionNew'  # use this 
 
-dev = True
+dev = False
 #model parameters
 patience     = 10 #
 delta        = 1e-4
@@ -147,7 +147,7 @@ def __main__():
                 , val_Loader = val_Loader
                 , model    = model
                 , patience = patience
-                , delta    = 1e-4
+                , delta    = delta
                 , epochs = epochs
                 , optimizer = optimizer
                 , loss_Fun = loss_Fun

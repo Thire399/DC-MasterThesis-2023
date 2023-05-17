@@ -260,7 +260,7 @@ class GradientMatching():
 #dataset = 'MNIST'
 dataset = 'Alzheimer_MRI'
 datatype     = ''
-costumLabel  = 'GMAlzheimer_K1000_40_ours_run2'
+costumLabel  = 'GMAlzheimer_K1000_402_ours_test'
 homeDir = os.getcwd()
 print(GREEN  +f'Running at "{homeDir}"...' + RESET)
 os.chdir(homeDir)
@@ -277,7 +277,7 @@ print(RED + '\nStaring Condensation...\n' + RESET )
 model = M.ConvNet()
 GM = GradientMatching(model
                         , batchSize = batch_size #batch for updating model.
-                        , syntheticSampleSize = 40
+                        , syntheticSampleSize = 402
                         , k = 1000
                         , c = 2
                         , lr_Theta = 0.01
@@ -289,5 +289,5 @@ GM = GradientMatching(model
 
 x, y, d = GM.Generate(xTrain, yTrain)
 GM.save_output(after = False)
-torch.save(d, f=f'Data/Synthetic_{dataset}/{costumLabel}testDistance.pt')
+torch.save(d, f=f'Data/Synthetic_{dataset}/{costumLabel}Distance.pt')
 

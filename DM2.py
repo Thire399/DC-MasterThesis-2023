@@ -23,12 +23,34 @@ RESET = '\033[0m'
 
 warnings.filterwarnings("ignore")
 
-def Gen_Y(size):
-    if size % 2 != 0:
-        return None
-    class_0 = torch.tensor(np.asarray([0]*int(size/2)))
-    class_1 = torch.tensor(np.asarray([1]*int(size/2)))
-    return torch.cat((class_0, class_1))
+def Gen_Y(num_samples, num_classes):
+    '''Dynamically assigns labels to each class'''
+    desired_samples_per_class = num_samples // num_classes
+
+    # Calculate the number of samples needed for each class
+    class_counts = [desired_samples_per_class] * num_classes
+
+    # Calculate the remaining samples to distribute evenly
+    remaining_samples = num_samples - (desired_samples_per_class * num_classes)
+
+    # Distribute the remaining samples cyclically across the classes
+    for i in range(remaining_samples):
+        class_counts[i] += 1
+
+    # Create an empty tensor for labels
+    labels = torch.empty(num_samples, dtype=torch.long)
+
+    # Assign labels to each sample
+    class_index = 0
+    for i in range(num_samples):
+        labels[i] = class_index
+        class_counts[class_index] -= 1
+
+        if class_counts[class_index] == 0:
+            class_index += 1
+
+    return labels
+
 
 class DistributionMatching():
 
@@ -39,12 +61,13 @@ class DistributionMatching():
         self.batch_size = batchSize
         self.k = k
         self.c = c
-        self.savePath = f'Data/Synthetic_{DataSet}'
+        self.savePath = f'Data/Proccesed/{DataSet}'
         os.makedirs(f'{self.savePath}/CarbonLogs', exist_ok = True)
         self.customLabel = customLabel
+        self.dataset = DataSet
         self.lr_S = lr_S
         self.S_x = nn.Parameter(torch.rand((syntheticSampleSize, 1, 128, 128)), requires_grad = True) #Totally random data
-        self.S_y = Gen_Y(self.S_x.shape[0])
+        self.S_y = Gen_Y(syntheticSampleSize, c)
         self.loss_Fun = loss_Fun
         self.optimizerS = optim.SGD([self.S_x], lr = lr_S, momentum = 0.5)
         self.carbonTracker = CarbonTracker(epochs = self.k, 
@@ -62,11 +85,11 @@ class DistributionMatching():
     def save_output(self, x = None, y = None) -> None:
         print('Saving synthetic dataset...')
         if x == None:
-            torch.save(self.S_x, f = f'{self.savePath}/{self.customLabel}X.pt')
-            torch.save(self.S_y, f = f'{self.savePath}/{self.customLabel}Y.pt')
+            torch.save(self.S_x, f = f'{self.savePath}_NonBinary/Result/{self.customLabel}X.pt')
+            torch.save(self.S_y, f = f'{self.savePath}_NonBinary/Result/{self.customLabel}Y.pt')
         else:
-            torch.save(x, f = f'{self.savePath}/{self.customLabel}X.pt')
-            torch.save(y, f = f'{self.savePath}/{self.customLabel}Y.pt')
+            torch.save(x, f = f'{self.savePath}_NonBinary/Result/{self.customLabel}X.pt')
+            torch.save(y, f = f'{self.savePath}_NonBinary/Result/{self.customLabel}Y.pt')
         print(f'Saved "{self.customLabel}" to "{self.savePath}"')
         return None
     
@@ -83,14 +106,6 @@ class DistributionMatching():
             S_aug = TF.adjust_brightness(syn_x, 0,2)
         return T_aug, S_aug
     
-    def sigmoid(self, x):
-        """Sigmoid Activation Function
-            Arguments:
-            x.torch.tensor
-            Returns
-            Sigmoid(x.torch.tensor)
-        """
-        return 1 / (1+torch.exp(-x))
     def min_max_normalization(self, images_tensor): 
         # Calculate the minimum and maximum values across all images 
         min_value = torch.min(images_tensor) 
@@ -101,10 +116,10 @@ class DistributionMatching():
 
 
     def Generate(self, T_x, T_y,):
-        Schange_class_index = torch.argmax(self.S_y).item()
-        Tchange_class_index = torch.argmax(T_y).item()
-        torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}BeforeX.pt')
-        torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}BeforeY.pt')
+        #Schange_class_index = torch.argmax(self.S_y).item()
+        #Tchange_class_index = torch.argmax(T_y).item()
+        torch.save(self.S_x, f = f'{self.savePath}_NonBinary/Result/{self.customLabel}BeforeX.pt')
+        torch.save(self.S_y, f = f'{self.savePath}_NonBinary/Result/{self.customLabel}BeforeY.pt')
         self.carbonTracker.epoch_start()    
         for k in range(self.k):
             loss_avg = 0
@@ -114,20 +129,18 @@ class DistributionMatching():
             loss = 0 
             # images_real_all = []
             # images_syn_all = []
-            if k % 5 == 0:
+            if k % 50 == 0:
                 printout = True
             else: printout = False
             for c in range(self.c):
                 if printout: 
                     print('Create Mini Batches')
-                if c == 0:
-                    T_DataX = (T_x[:Tchange_class_index])
-                    S_DataX = (self.S_x[:Schange_class_index])
-                    #sample w_c - omega for every class
-                else:
-                    T_DataX = (T_x[Tchange_class_index:])
-                    S_DataX = (self.S_x[Schange_class_index:])
-                    #sample w_c - omega for every class
+                S_Y_indices = (self.S_y == c).nonzero(as_tuple=True)[0]
+                T_Y_indices = (T_y == c).nonzero(as_tuple=True)[0]
+
+                T_DataX = (T_x[T_Y_indices])
+                S_DataX = (self.S_x[S_Y_indices])                
+                #sample w_c - omega for every class
                 if printout:
                         print(MAGENTA +  f'\t\tSampling for class {c}... ' + RESET)
                 T_BatchX = self.sampleRandom(T_DataX, batch_size = self.batch_size)
@@ -137,26 +150,16 @@ class DistributionMatching():
                 T_output = self.model.embed(T_aug.type(torch.float32).to(self.device))
                 S_output = self.model.embed(S_aug.type(torch.float32).to(self.device))
                 loss += torch.sum((torch.mean(T_output, dim=0) - torch.mean(S_output, dim=0))**2)
-                # images_real_all.append(T_aug) 
-                # images_syn_all.append(S_aug)
-            # images_real_all = torch.cat(images_real_all, dim=0)
-            # images_syn_all = torch.cat(images_syn_all, dim=0)
-
-            # T_output = self.model.embed(images_real_all.type(torch.float32).to(self.device))
-            # S_output = self.model.embed(images_syn_all.type(torch.float32).to(self.device))
-
-            # compute the loss
-#            loss += torch.sum((torch.mean(T_output, dim=0) - torch.mean(S_output, dim=0))**2)
             loss.backward()
             self.optimizerS.step()
             loss_avg += loss.item()
             if printout:
-                print(f'iteration [' + GREEN + f'{k}' + RESET + f'/{self.k}]\t avg Loss:' + GREEN+ f'{loss_avg /2}' + RESET)
+                print(f'iteration [' + GREEN + f'{k}' + RESET + f'/{self.k}]\t avg Loss:' + GREEN+ f'{loss_avg /self.c}' + RESET)
             # backpropagation and weight update
-            torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateX.pt')
-            torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateY.pt')
+            torch.save(self.S_x, f = f'{self.savePath}_NonBinary/Result/{self.customLabel}IntermidiateX.pt')
+            torch.save(self.S_y, f = f'{self.savePath}_NonBinary/Result/{self.customLabel}IntermidiateY.pt')
         
-            self.carbonTracker.epoch_end()
+        self.carbonTracker.epoch_end()
         #self.S_x = self.min_max_normalization(self.S_x) #after
         self.carbonTracker.stop()
         return self.S_x, self.S_y
@@ -167,16 +170,24 @@ class DistributionMatching():
 #dataSet      = 'chest_xray'
 dataset = 'Alzheimer_MRI'
 datatype     = ''
-costumLabel  = 'DM_LR1_k20000_40_'
+costumLabel  = 'Test'
 homeDir = os.getcwd()
 print(f'Running at "{homeDir}"...')
 os.chdir(homeDir)
-batch_size   = 32
+batch_size   = 5
+os.makedirs('Data/Proccesed/Alzheimer_MRI_NonBinary/Result/', exist_ok = True)
 ####### PARAMETERS #######
 print('preparing training data...')
 #Train data
-xTrain = torch.load(f'Data/Proccesed/{dataset}/trainX.pt')
-yTrain = torch.load(f'Data/Proccesed/{dataset}/trainY.pt')
+
+non = torch.load(f'Data/Proccesed/{dataset}_NonBinary/non.pt')
+very_mild = torch.load(f'Data/Proccesed/{dataset}_NonBinary/very_mild.pt')
+mild = torch.load(f'Data/Proccesed/{dataset}_NonBinary/mild.pt')
+moderate = torch.load(f'Data/Proccesed/{dataset}_NonBinary/moderate.pt')
+
+xTrain = torch.cat([non, very_mild, mild, moderate], dim = 0)
+
+yTrain = torch.tensor([0]*non.shape[0] + [1]*very_mild.shape[0] + [2]*mild.shape[0] + [3]*moderate.shape[0])
 #xTrain = xTrain.repeat(1, 3, 1, 1)
 
 print('\nStaring Condensation...\n')
@@ -186,9 +197,9 @@ DM = DistributionMatching(model
                         , batchSize = batch_size
                         , syntheticSampleSize = 40 #0,1% - 4, 1% - 40, 10% - 402 30% - 1206, 50% - 
                         , k = 20000
-                        , c = 2
+                        , c = 4
                         , lr_S = 1 # 10(ok?) 100(good)?
-                        , loss_Fun = nn.BCEWithLogitsLoss()
+                        , loss_Fun = nn.BCELoss()
                         , DataSet = dataset
                         , customLabel = costumLabel)
 

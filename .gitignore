@@ -21,6 +21,8 @@ Data/Proccesed/Alzheimer_MRI/**
 Data/Synthetic_Alzheimer_MRI/** 
 Data/Synthetic_MNIST/** 
 Data/Proccesed/MNIST/**
+Data/Proccesed/Alzheimer_MRI_NonBinary/**
+test.png
 
 mnist_data/**
 .vscode

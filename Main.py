@@ -23,10 +23,10 @@ os.chdir(homeDir)
 #model.classifier[1] = nn.Linear(in_features=1280, out_features = 1, bias=True)
 #model = models.inception_v3(pretrained = False)
 #model.fc = nn.Linear(in_features=2048, out_features = 1, bias=True)
-#model = M.ConvNet()
+model = M.ConvNet(num_classes = 4)
 #model = M.VGG()
-#model = M.ResNet2()
-model = M.DenseNet2()
+#model = M.ResNet2(num_classes= 4)
+#model = M.DenseNet2()
 #model = models.resnet18(pretrained = False)
 #model.fc = nn.Linear(in_features = 512, out_features = 1, bias = True)
 
@@ -37,13 +37,13 @@ model = M.DenseNet2()
 #               , df = 16384) # binary classification = 1.
 
 #Data parameters
-synthetic = True
-dataSet      = 'Alzheimer_MRI'
+synthetic = False
+dataSet      = 'Alzheimer_MRI_NonBinary'
 #dataSet = 'MNIST'
 #dataSet      = 'chest_xray'
-datatype     = 'GMAlzheimer_K1000_4_ours_run3' #    DMAfter_LR1_k20_402_even  DMAfter_LR01_k20_nor_2016_bs10
+datatype     = '' #    DMAfter_LR1_k20_402_even  DMAfter_LR01_k20_nor_2016_bs10
 #'10PercentDistribution'
-costumLabel  = 'GMAlzheimer_K1000_4_ours_run3'#DMAfter_LR01_k20   DMAfterMNIST_LR1_k20_100_evenBeforeX
+costumLabel  = 'DM40'#DMAfter_LR01_k20   DMAfterMNIST_LR1_k20_100_evenBeforeX
 #costumLabel = '64x6410PercentDistributionNew'  # use this 
 
 dev = False
@@ -51,15 +51,15 @@ dev = False
 patience     = 10 #
 delta        = 1e-4
 epochs       = 400
-
 learningRate = 1e-3
 optimizer    = optim.SGD(model.parameters(), lr = learningRate, momentum = 0.9)
 #optimizer    =  optim.Adam(model.parameters(), lr = learningRate)
-loss_Fun     = nn.BCEWithLogitsLoss()
-batch_size   = 10
+loss_Fun     = nn.CrossEntropyLoss() #nn.BCEWithLogitsLoss()
+batch_size   = 32
 saveModel    = True
 figSave      = True
 highRes      = False #only chest
+isbinary   = False 
 ####### PARAMETERS #######
 
 ####### Main Calls ########
@@ -91,11 +91,23 @@ def min_max_normalization2(images_tensor):
     
 def __main__():
         print('Starting...')
-        if synthetic:
+        if isbinary != True and synthetic != True and dataSet == 'Alzheimer_MRI_NonBinary':
+            #non = torch.load(f'Data/Proccesed/{dataSet}/non.pt')
+            #very_mild = torch.load(f'Data/Proccesed/{dataSet}/very_mild.pt')
+            #mild = torch.load(f'Data/Proccesed/{dataSet}/mild.pt')
+            #moderate = torch.load(f'Data/Proccesed/{dataSet}/moderate.pt')
+#
+            #xTrain = torch.cat([non, very_mild, mild, moderate], dim = 0)
+            #yTrain = torch.tensor([0]*non.shape[0] + [1]*very_mild.shape[0] + [2]*mild.shape[0] + [3]*moderate.shape[0])
+            xTrain = torch.load('Data/Proccesed/Alzheimer_MRI_NonBinary/DM400X.pt')
+            yTrain = torch.load('Data/Proccesed/Alzheimer_MRI_NonBinary/DM400Y.pt')
+
+        elif synthetic:
             xTrain = torch.load(f'Data/Synthetic_{dataSet}/' + datatype + 'X.pt')
             yTrain = torch.load(f'Data/Synthetic_{dataSet}/' + datatype + 'Y.pt')
             with torch.no_grad():
                 xTrain = min_max_normalization2(xTrain)#.repeat(1,3,1,1))
+        
         elif highRes:
             import Data_processing as DP
             print('High resulotion...\nGetting file names...')
@@ -156,13 +168,15 @@ def __main__():
                 , dataSet = dataSet
                 , costumLabel = costumLabel
                 , dev = dev
+                , isBinary = isbinary
                 )
         if saveModel:
                 fscore, pred, _ = Loop.eval_model(model = model
                                 , dataset = dataSet
                                 , dev = dev
                                 , val_Loader = val_Loader
-                                , size = costumLabel)
+                                , size = costumLabel
+                                , isbinary = False)
             #print('Accuracy on temp ValidationSet: {0}     --> (sum(Prediction = Target))/n_sampels'.format(np.sum([p == t])/t.shape[0]))        
 
         

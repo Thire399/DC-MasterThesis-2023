@@ -178,7 +178,6 @@ class ConvNet(nn.Module):
                 nn.init.xavier_uniform_(m.weight)#, mean=0.0, std=0.01)
                 if hasattr(m, 'weight') and m.weight is not None:
                     m.weight.requires_grad_(True)
-
         return None
     def forward(self, x):
         out = self.conv1(x)

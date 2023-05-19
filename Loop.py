@@ -11,8 +11,9 @@ import re
 from torchvision import models
 from carbontracker.tracker import CarbonTracker
 from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import precision_recall_curve
-from sklearn.metrics import f1_score
+from sklearn.metrics import precision_recall_curve, f1_score, precision_score, recall_score
+
+
 
 # Maybe move to another file?
 def PRAUC(pred, Target, ep):
@@ -34,7 +35,7 @@ def PRAUC(pred, Target, ep):
     Prediction = [int(round(x[0])) if x[0] >= bestT else 0 for x in pred]
     return P[ix], R[ix], Prediction, fscore[ix], bestT
 
-def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimizer, loss_Fun, modelSave, figSave, dataSet, costumLabel, dev = False):
+def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimizer, loss_Fun, modelSave, figSave, dataSet, costumLabel, dev = False, isBinary = True):
     
     now = time.strftime("%Y%m%d-%H%M%S") #save file as current time stamp - better format to save file?
     mkPathLoss = 'Data/Loss_' + dataSet
@@ -93,8 +94,14 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
         for batch, (data, target) in enumerate(train_Loader, 1):
             optimizer.zero_grad() # a clean up step for PyTorch
             out = model(data.type(torch.float32).to(device))
-            out = out.flatten()
-            loss = loss_Fun(out, (target).type(torch.float32).to(device))
+            if isBinary:
+                out = out.flatten()
+                target = target.type(torch.float32)
+            else:
+                #out = torch.softmax(out, dim=1)
+                # Getting the index of the maximum probability (predicted class)
+                target = target.type(torch.int64)
+            loss = loss_Fun(out, (target).to(device))
             loss.backward()
             optimizer.step()
             batchTrain_loss.append(loss.item())
@@ -110,10 +117,17 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
         model.eval()
         for batch, (data, target) in enumerate(val_Loader, 1):
             optimizer.zero_grad() # a clean up step for PyTorch
-            out = model(data.type(torch.float32).to(device)).flatten()
-            out = out.flatten()
+            out = model(data.type(torch.float32).to(device))
+            if isBinary:
+                out = out.flatten()
+                target = target.type(torch.float32)
+            else:
+                #out = torch.softmax(out, dim=1)
+                target = target.type(torch.int64)
+                # Getting the index of the maximum probability (predicted class)
+                #out = torch.argmax(probs, dim=1)
             #out = out.clamp(min = 0)
-            loss = loss_Fun(out, (target).type(torch.float).to(device))
+            loss = loss_Fun(out, (target).to(device))
             batchVal_loss.append(loss.item())
             if batch % 8 == 0: #For printing
                 print(4*' ', '===> Validation: [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -169,7 +183,7 @@ def TrainLoop(train_Loader, val_Loader, model, patience, delta, epochs, optimize
 
     return None
 
-def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '64x64', threshold = None, isPrint = True):
+def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '64x64', threshold = None, isPrint = True, isbinary = True):
     torch.cuda.empty_cache()
         #new trying something with PRAUC
     predictionList = []
@@ -202,7 +216,9 @@ def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '
     model.eval()
     for batch, (data, target) in enumerate(val_Loader, 1):
         out = model(data.type(torch.float32).to(device))
-        out = nn.Sigmoid()(out) #using sigmoid to go from logits to probabilities.
+        if isbinary: #using sigmoid to go from logits to probabilities.
+            out = torch.sigmoid(out)
+        else: out = torch.softmax(out, dim = 1)
         #for each batch get each prediction out + the target.
         for p in out.detach().cpu().numpy():
             predictionList.append(p) #np.argmax(p))
@@ -211,15 +227,25 @@ def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '
         if batch % 8 == 0 and isPrint: #For printing
             print(4*' ', '===> F-Score: [{}/{} ({:.0f}%)]\t'.format(
                 batch * len(data), len(val_Loader.dataset),
-                100. * batch / len(val_Loader)))
-    #for i in range(len(targetList)):
-    #    print(f'Target    : {np.array(targetList).flatten()[i]} Prediction: {predictionList[i]}')
+                100. * batch / len(val_Loader)))    
     
-
     targetList = np.array(targetList).flatten()
     if threshold == None:
-        Precision, Recall, Prediction, fscore, threshold = PRAUC(predictionList, targetList, ep = 1e-5)
-        print('Precision: {0}\nRecall: {1}'.format(Precision, Recall))
+        if isbinary:
+            Precision, Recall, Prediction, fscore, threshold = PRAUC(predictionList, targetList, ep = 1e-5)
+            print('Precision: {0}\nRecall: {1}'.format(Precision, Recall))
+        else:
+            _, counts = np.unique(targetList, return_counts = True)
+            if len(np.unique(counts)) > 1: #if more than 1 unique counts = class imbalance
+                mode = 'weighted' # for class imbalance
+            else: mode = 'macro'
+            predictionList = np.argmax(np.array(predictionList), axis = 1)
+            Prediction = precision_score(targetList, predictionList, average = mode)
+            recall = recall_score(targetList, predictionList, average = mode)
+            fscore = f1_score(targetList, predictionList, average = mode)
+            threshold = 0.5 #not used for multiclass.
+            print(f'Precision: {Prediction}\nRecall: {recall}\nfscore: {fscore}')
+
     else:
         print(threshold)
         Prediction = [int(round(x[0])) if x[0] >= threshold else 0 for x in predictionList]

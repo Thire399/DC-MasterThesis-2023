@@ -47,7 +47,7 @@ class DistributionMatching():
         self.S_y = Gen_Y(self.S_x.shape[0])
         self.loss_Fun = loss_Fun
         self.optimizerS = optim.SGD([self.S_x], lr = lr_S, momentum = 0.5)
-        self.carbonTracker = CarbonTracker(epochs = self.k, 
+        self.carbonTracker = CarbonTracker(epochs = 1, 
                             log_dir = self.savePath + '/CarbonLogs',
                             log_file_prefix = costumLabel + model._get_name(),
                             monitor_epochs = -1,
@@ -156,8 +156,7 @@ class DistributionMatching():
             torch.save(self.S_x, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateX.pt')
             torch.save(self.S_y, f = f'Data/Synthetic_Alzheimer_MRI/{self.customLabel}IntermidiateY.pt')
         
-            self.carbonTracker.epoch_end()
-        #self.S_x = self.min_max_normalization(self.S_x) #after
+        self.carbonTracker.epoch_end()
         self.carbonTracker.stop()
         return self.S_x, self.S_y
     

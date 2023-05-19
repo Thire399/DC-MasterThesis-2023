@@ -160,7 +160,6 @@ class DistributionMatching():
             torch.save(self.S_y, f = f'{self.savePath}_NonBinary/Result/{self.customLabel}IntermidiateY.pt')
         
         self.carbonTracker.epoch_end()
-        #self.S_x = self.min_max_normalization(self.S_x) #after
         self.carbonTracker.stop()
         return self.S_x, self.S_y
     
@@ -174,7 +173,7 @@ costumLabel  = 'Test'
 homeDir = os.getcwd()
 print(f'Running at "{homeDir}"...')
 os.chdir(homeDir)
-batch_size   = 5
+batch_size   = 16
 os.makedirs('Data/Proccesed/Alzheimer_MRI_NonBinary/Result/', exist_ok = True)
 ####### PARAMETERS #######
 print('preparing training data...')
@@ -195,7 +194,7 @@ print('\nStaring Condensation...\n')
 model = M.ConvNet2()
 DM = DistributionMatching(model
                         , batchSize = batch_size
-                        , syntheticSampleSize = 40 #0,1% - 4, 1% - 40, 10% - 402 30% - 1206, 50% - 
+                        , syntheticSampleSize = 400 #0,1% - 4, 1% - 40, 10% - 402 30% - 1206, 50% - 
                         , k = 20000
                         , c = 4
                         , lr_S = 1 # 10(ok?) 100(good)?

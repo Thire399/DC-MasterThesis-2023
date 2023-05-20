@@ -209,9 +209,8 @@ def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '
                                                    if re.search('model', file) and re.search(size+model._get_name(), file)]))[-1]  
             print(f'no model specified.\nUsing last trained model: "{model_filePath}"')  
         else:
-            print(f'Model specified.\nUsing trained model: "{model_filePath}"')
+            print(f'Model specified. Using trained model: "{model_filePath}"')
         model.load_state_dict(torch.load(model_filePath))
-    print(model_filePath)
     model.to(device)
     model.eval()
     for batch, (data, target) in enumerate(val_Loader, 1):
@@ -232,26 +231,38 @@ def eval_model(model, dataset, dev, val_Loader,  model_filePath = None, size = '
     targetList = np.array(targetList).flatten()
     if threshold == None:
         if isbinary:
-            Precision, Recall, Prediction, fscore, threshold = PRAUC(predictionList, targetList, ep = 1e-5)
-            print('Precision: {0}\nRecall: {1}'.format(Precision, Recall))
+            precision, recall, Prediction, fscore, threshold = PRAUC(predictionList, targetList, ep = 1e-5)
+            print('Precision: {0}\nRecall: {1}'.format(precision, recall))
         else:
             _, counts = np.unique(targetList, return_counts = True)
-            if len(np.unique(counts)) > 1: #if more than 1 unique counts = class imbalance
-                mode = 'weighted' # for class imbalance
-            else: mode = 'macro'
+            #if len(np.unique(counts)) > 1: #if more than 1 unique counts = class imbalance
+            #    mode = 'weighted' # for class imbalance
+            #else: mode = 'micro'
+            mode = 'micro'
             predictionList = np.argmax(np.array(predictionList), axis = 1)
-            Prediction = precision_score(targetList, predictionList, average = mode)
+            Prediction = predictionList
+            precision = precision_score(targetList, predictionList, average = mode)
             recall = recall_score(targetList, predictionList, average = mode)
             fscore = f1_score(targetList, predictionList, average = mode)
             threshold = 0.5 #not used for multiclass.
-            print(f'Precision: {Prediction}\nRecall: {recall}\nfscore: {fscore}')
+            print(f'Precision: {precision}\nRecall: {recall}\nfscore: {fscore}')
 
     else:
-        print(threshold)
+        _, counts = np.unique(targetList, return_counts = True)
+        if len(counts) > 2:
+            #if len(np.unique(counts)) > 1: #if more than 1 unique counts = class imbalance
+            #    mode = 'weighted' # for class imbalance
+            #else: mode = 'micro'
+            mode = 'micro'
+        else:
+            mode = 'binary'
         Prediction = [int(round(x[0])) if x[0] >= threshold else 0 for x in predictionList]
-        fscore = f1_score(targetList, Prediction, average = 'binary')
-        print('F1 score:{0}'.format(fscore))
-    return fscore, Prediction, threshold#, predictionList
+        fscore = f1_score(targetList, Prediction, average = mode)
+        recall = recall_score(targetList, Prediction, average = mode)
+        precision = precision_score(targetList, Prediction, average = mode)
+        print('F1 score:{0} using mode: {1}'.format(fscore, mode))
+        
+    return fscore, Prediction, threshold, recall, precision#, predictionList
 
 
 ####### Main Calls ########
